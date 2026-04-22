@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# nextjs-claw
 
-## Getting Started
+A Next.js starter that builds itself. Chat with Claude inside the running app, and it edits its own source code and hot-reloads in real time.
 
-First, run the development server:
+## Usage
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
+npx nextjs-claw my-app
+cd my-app
+bun install
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open [http://localhost:3000](http://localhost:3000) and start chatting.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## What you get
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Next.js 16 + React 19 + Tailwind CSS 4
+- TypeScript, ESLint — all pre-configured
+- An AI chat panel wired to the `claude` CLI subprocess
+- The app edits its own source files and Next.js fast-refreshes them live
 
-## Learn More
+## Prerequisites
 
-To learn more about Next.js, take a look at the following resources:
+**Bun** — the package manager used by the generated app.
+Install from [https://bun.sh](https://bun.sh).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Claude Code CLI** — the AI engine that edits the source.
+```bash
+npm i -g @anthropic-ai/claude-code
+claude login
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The app calls `claude` as a subprocess and uses your existing Claude subscription. No API key is required.
 
-## Deploy on Vercel
+## How it works
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The chat panel in the generated app sends your instructions to the `claude` CLI, which has full access to the project files. Claude rewrites the source, Next.js hot-reloads, and you see the changes instantly.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Options
+
+```
+npx nextjs-claw <directory>   # scaffold into <directory>
+npx nextjs-claw .             # scaffold into current directory (must be empty)
+npx nextjs-claw               # defaults to ./my-infinite-app
+```
+
+## License
+
+MIT

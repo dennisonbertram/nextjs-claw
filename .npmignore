@@ -1,0 +1,16 @@
+# exclude everything by default
+*
+
+# then re-include:
+!bin/
+!bin/**
+!template/
+!template/**
+!README.md
+!package.json
+
+# but exclude build artifacts inside template
+template/node_modules/
+template/.next/
+template/bun.lockb
+template/package-lock.json
