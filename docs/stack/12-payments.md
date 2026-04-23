@@ -76,7 +76,7 @@ if (!process.env.STRIPE_SECRET_KEY) {
 }
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-03-31.basil',  // Pin to a specific API version
+  apiVersion: '2026-03-25.dahlia',  // Verified current as of 2026-04-23
   typescript: true,
 });
 ```
@@ -341,7 +341,7 @@ bun db:migrate
 - **Webhook raw body**: Stripe signature verification requires the raw, un-parsed request body. If Next.js parses the body first (e.g., in middleware that calls `req.json()`), the signature will fail. The webhook route must read via `req.arrayBuffer()`.
 - **Returning 500 on handler errors**: If your webhook handler throws a 500, Stripe will retry the event up to 25 times over 3 days. Return 200 after logging the error to prevent retry spam. Only return 5xx if the operation is idempotent and retry is desired.
 - **CSRF exemption**: Add `/api/stripe/webhook` to the `CSRF_EXEMPT` list in `middleware.ts`. Stripe doesn't send your CSRF cookie.
-- **Stripe API version pinning**: The `apiVersion` in `lib/stripe/index.ts` must be an exact version string from Stripe's changelog. Stripe will warn you when the pinned version is deprecated. Update it explicitly — never use `'latest'`.
+- **Stripe API version pinning**: The `apiVersion` in `lib/stripe/index.ts` is pinned to `2026-03-25.dahlia` (verified current as of 2026-04-23). Stripe versions API strings as `YYYY-MM-DD` plus a codename; check https://docs.stripe.com/api/versioning when adopting this recipe and bump explicitly when you intentionally upgrade — never use `'latest'`. Stripe will warn you in the dashboard when a pinned version is approaching end-of-life.
 - **Test vs live keys**: `STRIPE_SECRET_KEY` starting with `sk_test_` is test mode. Never commit live keys. Use separate `.env.local` for dev.
 
 ## Further reading

@@ -24,6 +24,7 @@ File upload handling with presigned PUT URLs: the browser uploads directly to st
 - `lib/storage/local.ts` — local disk handler
 - `lib/storage/s3.ts` — MinIO/S3 handler
 - `app/preview/api/upload/presign/route.ts` — presign endpoint
+- `app/preview/api/upload/local/[...key]/route.ts` — local PUT handler (receives the actual bytes in dev)
 - `app/preview/api/upload/confirm/route.ts` — confirmation endpoint (optional)
 - `public/uploads/` — dev upload target (add to .gitignore)
 
@@ -111,12 +112,13 @@ export class LocalBackend implements StorageBackend {
     _contentType: string,
     ttlSeconds: number,
   ): Promise<string> {
-    const expires = Date.now() + ttlSeconds * 1000;
+    const exp = Date.now() + ttlSeconds * 1000;
     const sig = createHmac('sha256', SECRET)
-      .update(`${key}:${expires}`)
+      .update(`${key}:${exp}`)
       .digest('base64url');
-    // The actual upload handler is at /api/upload/local
-    return `${APP_URL}/api/upload/local?key=${encodeURIComponent(key)}&expires=${expires}&sig=${sig}`;
+    // The upload handler lives at /api/upload/local/[...key].
+    // Key segments become path components; sig and exp are query params.
+    return `${APP_URL}/api/upload/local/${key}?sig=${sig}&exp=${exp}`;
   }
 
   async generatePresignedDownloadUrl(key: string, _ttlSeconds: number): Promise<string> {
@@ -243,6 +245,109 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ uploadUrl, key });
 }
 ```
+
+### `app/preview/api/upload/local/[...key]/route.ts`
+
+This handler receives the actual file bytes from the browser PUT request in dev. The presign endpoint issues a signed URL pointing here; this handler verifies the signature before writing to disk.
+
+```ts
+// app/preview/api/upload/local/[...key]/route.ts
+// Dev-only local PUT handler.
+// Receives the presigned PUT request from the browser and writes the file to
+// public/uploads/<key>. Production uses MinIO (the browser PUTs there directly).
+
+import { NextRequest, NextResponse } from 'next/server';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { pipeline } from 'node:stream/promises';
+import { Readable } from 'node:stream';
+
+const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
+const UPLOAD_SECRET = process.env.SESSION_SECRET ?? 'dev-secret';
+const MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
+
+// Key characters: a-z A-Z 0-9 . _ / - (no .., no leading slash, no hidden files)
+const KEY_RE = /^[a-z0-9][a-z0-9._/-]*$/i;
+
+function sanitizeKey(segments: string[]): string | null {
+  const key = segments.join('/');
+  if (!KEY_RE.test(key)) return null;
+  if (key.includes('..')) return null;
+  if (key.split('/').some((s) => s.startsWith('.'))) return null;
+  return key;
+}
+
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ key: string[] }> },
+) {
+  const { key: keySegments } = await params;
+  const key = sanitizeKey(keySegments);
+  if (!key) {
+    return NextResponse.json({ error: 'Invalid key' }, { status: 400 });
+  }
+
+  // Size guard — reject before reading the body
+  const contentLength = Number(req.headers.get('content-length') ?? 0);
+  if (contentLength > MAX_SIZE_BYTES) {
+    return NextResponse.json({ error: 'File too large (max 50 MB)' }, { status: 413 });
+  }
+
+  // Signature + expiry verification
+  const { searchParams } = new URL(req.url);
+  const sig = searchParams.get('sig');
+  const exp = searchParams.get('exp');
+
+  if (!sig || !exp) {
+    return NextResponse.json({ error: 'Missing signature or expiry' }, { status: 401 });
+  }
+
+  const expMs = Number(exp);
+  if (Number.isNaN(expMs) || expMs <= Date.now()) {
+    return NextResponse.json({ error: 'Upload URL has expired' }, { status: 401 });
+  }
+
+  // Reconstruct what the presign endpoint signed: "<key>:<exp>"
+  const expectedSig = createHmac('sha256', UPLOAD_SECRET)
+    .update(`${key}:${exp}`)
+    .digest('base64url');
+
+  const sigBuf = Buffer.from(sig);
+  const expBuf = Buffer.from(expectedSig);
+  const sigValid =
+    sigBuf.length === expBuf.length && timingSafeEqual(sigBuf, expBuf);
+
+  if (!sigValid) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+  }
+
+  // Write file — stream the body to disk, do NOT buffer with req.arrayBuffer()
+  const destPath = path.join(UPLOAD_DIR, key);
+  await fs.mkdir(path.dirname(destPath), { recursive: true });
+
+  if (!req.body) {
+    return NextResponse.json({ error: 'Empty body' }, { status: 400 });
+  }
+
+  // node:stream/promises pipeline streams the ReadableStream<Uint8Array> to a
+  // writable file handle without buffering the entire file in memory.
+  const dest = await fs.open(destPath, 'w');
+  try {
+    await pipeline(
+      Readable.fromWeb(req.body as import('stream/web').ReadableStream),
+      dest.createWriteStream(),
+    );
+  } finally {
+    await dest.close();
+  }
+
+  const stat = await fs.stat(destPath);
+  return NextResponse.json({ url: `/uploads/${key}`, size: stat.size });
+}
+```
+
+**Serving note:** `public/uploads/` is served by Next.js as static files, which is fine for local dev. In production, serve the `public/uploads/` directory directly via a reverse proxy (e.g., Caddy `file_server`) to bypass Node.js entirely — see `docs/stack/14-deployment.md`. In production with real MinIO, the browser PUTs directly to MinIO and this local route is never hit.
 
 ### Browser-side upload snippet
 
