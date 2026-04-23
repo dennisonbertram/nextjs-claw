@@ -32,6 +32,14 @@ So the agent engine **spawns `claude` as a subprocess** with `--output-format st
 | [06-build-plan-and-tests.md](./06-build-plan-and-tests.md) | — | Wave plan, file ownership, E2E test |
 | [07-risks-and-open-questions.md](./07-risks-and-open-questions.md) | — | Things to verify at build time, gotchas |
 
+### Wave 4 — Isolation, Picker, Safety
+
+| Doc | Purpose |
+|-----|---------|
+| [08-iframe-isolation.md](./08-iframe-isolation.md) | Move user app to `/preview` inside an iframe; chat at `/` becomes its own document. Fixes CSS leak; separation of infrastructure from user code. |
+| [09-click-to-reference.md](./09-click-to-reference.md) | In-browser element picker. Click an element in the preview → drops file:line chip into composer → agent edits that exact location. |
+| [10-safety-and-context.md](./10-safety-and-context.md) | Protected-path allowlist in system prompt + project primer so agent stops groping at turn 0. |
+
 ## Prereqs for the implementer (Sonnet)
 
 - Read `README.md` and this whole `docs/architecture/` tree before starting.
