@@ -37,7 +37,7 @@ So the agent engine **spawns `claude` as a subprocess** with `--output-format st
 | Doc | Purpose |
 |-----|---------|
 | [08-iframe-isolation.md](./08-iframe-isolation.md) | Move user app to `/preview` inside an iframe; chat at `/` becomes its own document. Fixes CSS leak; separation of infrastructure from user code. |
-| [09-click-to-reference.md](./09-click-to-reference.md) | In-browser element picker. Click an element in the preview → drops file:line chip into composer → agent edits that exact location. |
+| [09-click-to-reference.md](./09-click-to-reference.md) | In-browser element picker. Click an element in the preview → drops grep-based context chip into composer → agent greps for text/classes to locate and edit the element. No `_debugSource` dependency. |
 | [10-safety-and-context.md](./10-safety-and-context.md) | Protected-path allowlist in system prompt + project primer so agent stops groping at turn 0. |
 
 ## Prereqs for the implementer (Sonnet)

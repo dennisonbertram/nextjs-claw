@@ -1,20 +1,24 @@
-# 09 — Click-to-Reference Picker (Wave 4, Part 2)
+# 09 — Click-to-Reference Picker (Wave 4, Part 2 — grep-based approach)
 
-Builds on doc 08 (iframe isolation). The iframe at `/preview` includes a client-side picker. Users click an element in the preview → chip appears in chat composer → prompt is sent with structured context → agent edits the exact file and line.
+Builds on doc 08 (iframe isolation). The iframe at `/preview` includes a client-side picker. Users click an element in the preview → chip appears in chat composer → prompt is sent with structured DOM context → agent greps the codebase to find the exact location and edits it.
+
+## Why NOT `_debugSource`
+
+Turbopack in Next.js 16 does **not** inject `_debugSource` onto React Fiber nodes in dev mode. The original `_debugSource`-based implementation silently returned `null` for every click — producing empty chips and useless prompts. The fix: capture rich DOM context (text content, Tailwind classes, DOM path, component name from Fiber walk) and let the agent grep the codebase. Text content and class strings are uniquely grep-able and 100% reliable.
 
 ## UX flow
 
 1. User clicks **Pick element** button in chat panel header (or presses `P`).
 2. Cursor becomes crosshair. Hover outlines elements in preview iframe with a pulsing indigo border.
-3. User clicks. A chip drops into the composer: `<h1> "Hello, Claude." · app/preview/page.tsx:10`.
+3. User clicks. A chip drops into the composer: `<h1> "I am an empty canvas." · Home  ✕`.
 4. Pick mode stays active. User can click more elements → more chips. Escape exits pick mode.
 5. User types "make these bigger" and hits Send.
-6. Agent receives a prompt with a prepended `[Referenced elements: …]` block. It Reads and Edits precisely.
+6. Agent receives a prompt with a prepended DOM context block. It greps for text content, finds the exact line, edits.
 7. After sending, references are cleared.
 
 ## Architecture — how the picker reaches the iframe
 
-The iframe is same-origin. Its DOM is fully inspectable by the parent, and it can post messages freely. We use a small client component (`<PickBridge/>`) rendered inside the iframe's layout; the parent sends commands via postMessage and receives picks.
+The iframe is same-origin. Its DOM is fully inspectable by the parent, and it can post messages freely. A small client component (`<PickBridge/>`) is rendered inside the iframe's layout; the parent sends commands via postMessage and receives picks.
 
 Messages (parent ⇄ iframe):
 
@@ -26,376 +30,109 @@ Messages (parent ⇄ iframe):
 
 Origin-check in both directions (`e.origin === window.location.origin`). Ignore other messages.
 
+Note: the `claw/init` message (previously carrying `projectRoot`) has been removed. `projectRoot` is no longer needed client-side.
+
 ## Files
 
-### New
+### Changed
 
-- `template/lib/react-source.ts` — Fiber traversal utilities
-- `template/components/PickBridge.tsx` — client component mounted inside preview iframe; owns the overlay + click handler
-- `template/components/ReferenceChip.tsx` — small chip UI for composer
-
-### Modified
-
-- `template/components/AppShell.tsx` — state for `pickMode` and `references`; postMessage to iframe; receives picks
-- `template/components/PreviewFrame.tsx` — add `postMessage` method (via ref) so AppShell can command the iframe
-- `template/components/ChatPanel.tsx` — new header button "Pick element"
-- `template/components/Composer.tsx` — render reference chips above textarea; send() forwards references
-- `template/lib/use-agent-stream.ts` — `send(prompt, references?)` signature change
-- `template/app/api/agent/route.ts` — accept `references` in request body; format into prompt text
+- `template/lib/react-source.ts` — DOM context capture utilities (no `_debugSource`)
+- `template/components/PickBridge.tsx` — removed `projectRoot` state + `claw/init` handler
+- `template/components/AppShell.tsx` — removed `projectRoot` state, `claw/init` send
+- `template/components/ReferenceChip.tsx` — updated rendering for new `ElementRef` fields
+- `template/app/api/agent/route.ts` — updated `parseReferences` + `buildPromptWithReferences`
+- `template/app/api/agent/health/route.ts` — removed `projectRoot` from response
+- `template/lib/agent-engine.ts` — updated system prompt with grep-based element section
 
 ### Unchanged
 
-- `lib/agent-events.ts` — no new event types needed (tool_use chips already cover what the agent does)
-- `lib/agent-engine.ts` — no change (we preprocess the prompt on the server before passing to runAgent)
+- `template/lib/agent-events.ts` — no new event types needed
+- `template/lib/use-agent-stream.ts` — signature unchanged
+- `template/components/Composer.tsx` — unchanged (imports still work)
 
 ## Types
 
-Add to `template/lib/react-source.ts`:
+`template/lib/react-source.ts`:
 
 ```ts
 export interface ElementRef {
-  id: string;              // client-generated UUID for list keying
-  fileName: string;        // project-relative, e.g. "app/preview/page.tsx"
-  lineNumber: number;
-  columnNumber: number;
-  componentName: string;   // nearest owner component, e.g. "Home" or "Tile"
-  tagName: string;         // upper-case, "H1" / "BUTTON"
-  textSnippet: string;     // first ~80 chars of innerText, trimmed
-  cssPath: string;         // short selector, e.g. "section > h1"
+  id: string;                  // crypto.randomUUID
+  tagName: string;             // lowercase, e.g. "h1"
+  text: string;                // trimmed innerText, first ~100 chars, collapsed whitespace
+  classes: string[];           // split className; dedupe; drop Next/module hashes
+  domPath: string;             // up to 4 levels of "tag.firstClass", joined " > "
+  ariaLabel?: string;          // getAttribute('aria-label') if present
+  role?: string;               // getAttribute('role') if present
+  href?: string;               // for <a> / <link> / <area>
+  componentChain?: string;     // best-effort Fiber walk: "Home → Layout"
 }
 ```
 
-## Fiber walker — `template/lib/react-source.ts`
+## DOM capture strategy — `template/lib/react-source.ts`
 
-Everything here runs client-side, inside the iframe. React Fiber is a private API but stable enough for devtools-style features across React 18 and 19. Works under Next.js 16 + Turbopack because SWC's JSX transform injects `__source` on all JSX elements in dev (`process.env.NODE_ENV !== 'production'`). Production builds have no `_debugSource` — picker is a no-op then, which is fine.
+Everything here runs client-side, inside the iframe. No Fiber `_debugSource` dependency.
 
-```ts
-export interface ElementRef { /* as above */ }
+**`text`**: `innerText ?? textContent`, trimmed, whitespace collapsed, sliced to 100 chars (appends `…` if longer).
 
-// ─── public API ────────────────────────────────────────────────────────────
+**`classes`**: `el.className.split(/\s+/)`, stripped of CSS module hash suffixes (e.g. `page_xyz123__abc` → `page`), deduped. Tailwind classes like `text-5xl`, `font-bold` survive untouched.
 
-export function getElementRef(el: Element, projectRoot: string): ElementRef | null {
-  const fiber = getFiber(el);
-  if (!fiber) return null;
+**`domPath`**: Walk up ≤4 levels. For each node: `tag` + `.` + first meaningful class (skipping hash-looking, very short, or all-caps tokens). Stop at `body`/`html`. Result: `div.container > section > h1.text-5xl`.
 
-  const debug = findDebugSource(fiber);
-  if (!debug) return null;
+**`componentChain`**: Walk Fiber `.return` chain up to 15 levels. For each fiber, `t = fiber.elementType ?? fiber.type`. If function/class with a capitalized name, collect it. Handle `react.lazy` by checking `$$typeof.toString().includes('react.lazy')` and unwrapping `t._payload?._result`. Stop at known Next.js internal names. If nothing found, field is omitted.
 
-  return {
-    id: crypto.randomUUID(),
-    fileName: makeRelative(debug.fileName, projectRoot),
-    lineNumber: debug.lineNumber,
-    columnNumber: debug.columnNumber ?? 0,
-    componentName: findOwnerName(fiber) ?? 'Unknown',
-    tagName: el.tagName,
-    textSnippet: ((el as HTMLElement).innerText ?? el.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 80),
-    cssPath: buildCssPath(el),
-  };
-}
+## Prompt format sent to the agent
 
-// ─── internals ─────────────────────────────────────────────────────────────
+```
+The user clicked these elements in the preview. They're pointing to specific
+spots in the source. Grep the codebase for the text or class strings to locate
+them precisely — the source files are under `app/preview/`.
 
-interface MinimalFiber {
-  _debugSource?: { fileName: string; lineNumber: number; columnNumber?: number };
-  _debugOwner?: MinimalFiber;
-  return?: MinimalFiber;
-  elementType?: unknown;
-  type?: unknown;
-}
+1. <h1> "I am an empty canvas."
+   classes: text-5xl font-bold leading-tight tracking-tight sm:text-6xl
+   dom path: div > section > h1.text-5xl
+   component: Home
 
-function getFiber(el: Element): MinimalFiber | null {
-  const key = Object.keys(el).find(k => k.startsWith('__reactFiber$'));
-  if (!key) return null;
-  return (el as unknown as Record<string, MinimalFiber>)[key] ?? null;
-}
+2. <button> "Get started"
+   classes: rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white
+   dom path: section > div > a.rounded-md
 
-function findDebugSource(fiber: MinimalFiber): MinimalFiber['_debugSource'] | null {
-  let cur: MinimalFiber | undefined = fiber;
-  while (cur) {
-    if (cur._debugSource) return cur._debugSource;
-    cur = cur._debugOwner ?? cur.return;
-  }
-  return null;
-}
-
-function findOwnerName(fiber: MinimalFiber): string | null {
-  let cur: MinimalFiber | undefined = fiber;
-  while (cur) {
-    const t = cur.elementType ?? cur.type;
-    const name = typeOfName(t);
-    if (name && /^[A-Z]/.test(name)) return name;
-    cur = cur._debugOwner ?? cur.return;
-  }
-  return null;
-}
-
-function typeOfName(t: unknown): string | null {
-  if (!t) return null;
-  if (typeof t === 'function') return (t as { displayName?: string; name?: string }).displayName ?? (t as { name?: string }).name ?? null;
-  if (typeof t === 'object') return (t as { displayName?: string; name?: string }).displayName ?? null;
-  return null;
-}
-
-function makeRelative(absolutePath: string, projectRoot: string): string {
-  let p = absolutePath.replace(/\\/g, '/');
-  let root = projectRoot.replace(/\\/g, '/').replace(/\/$/, '');
-  if (p.startsWith(root + '/')) return p.slice(root.length + 1);
-  // Fallback: keep only from the last common app-ish segment
-  const m = p.match(/\/((?:app|components|lib|public)\/.+)$/);
-  return m ? m[1] : p;
-}
-
-function buildCssPath(el: Element): string {
-  const parts: string[] = [];
-  let cur: Element | null = el;
-  for (let i = 0; cur && cur !== document.body && i < 4; i++) {
-    let seg = cur.tagName.toLowerCase();
-    if (cur.id) { seg += `#${cur.id}`; }
-    else if (typeof cur.className === 'string' && cur.className.trim()) {
-      const first = cur.className.trim().split(/\s+/)[0];
-      if (first) seg += `.${first}`;
-    }
-    parts.unshift(seg);
-    cur = cur.parentElement;
-  }
-  return parts.join(' > ');
-}
+User request: make these bigger
 ```
 
-**Server provides `projectRoot`.** Extend `GET /api/agent/health` to return `projectRoot: process.cwd()`. `AppShell` fetches once on mount, passes to PickBridge via a startup postMessage.
+Only `classes`, `dom path`, `component` lines are emitted when non-empty. If refs is empty/undefined, raw `userPrompt` is passed through unchanged.
 
-## PickBridge — `template/components/PickBridge.tsx`
+## ReferenceChip rendering
 
-Runs inside the iframe (rendered by `app/preview/layout.tsx`). Listens for pick-mode toggles from parent; on click, extracts `ElementRef`, posts back.
-
-```tsx
-'use client';
-import { useEffect, useRef, useState } from 'react';
-import { getElementRef } from '@/lib/react-source';
-
-export default function PickBridge() {
-  const [active, setActive] = useState(false);
-  const [projectRoot, setProjectRoot] = useState<string>('');
-  const overlayRef = useRef<HTMLDivElement>(null);
-
-  // ── parent messages ──
-  useEffect(() => {
-    const onMsg = (e: MessageEvent) => {
-      if (e.origin !== window.location.origin) return;
-      const data = e.data as { kind?: string; active?: boolean; projectRoot?: string };
-      if (data?.kind === 'claw/pick-mode') setActive(!!data.active);
-      if (data?.kind === 'claw/init' && typeof data.projectRoot === 'string') setProjectRoot(data.projectRoot);
-    };
-    window.addEventListener('message', onMsg);
-    window.parent.postMessage({ kind: 'claw/ready' }, window.location.origin);
-    return () => window.removeEventListener('message', onMsg);
-  }, []);
-
-  // ── pick mode handlers ──
-  useEffect(() => {
-    if (!active) return;
-    const html = document.documentElement;
-    const prevCursor = html.style.cursor;
-    html.style.cursor = 'crosshair';
-
-    const onMove = (e: MouseEvent) => {
-      const t = document.elementFromPoint(e.clientX, e.clientY);
-      if (!t || !overlayRef.current) return;
-      if (t === overlayRef.current || overlayRef.current.contains(t)) return;
-      const rect = (t as HTMLElement).getBoundingClientRect();
-      const o = overlayRef.current;
-      o.style.left = rect.left + 'px';
-      o.style.top = rect.top + 'px';
-      o.style.width = rect.width + 'px';
-      o.style.height = rect.height + 'px';
-      o.style.display = 'block';
-    };
-
-    const onClick = (e: MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const t = document.elementFromPoint(e.clientX, e.clientY);
-      if (!t || t === overlayRef.current) return;
-      const ref = getElementRef(t, projectRoot);
-      if (ref) {
-        window.parent.postMessage({ kind: 'claw/pick', ref }, window.location.origin);
-      }
-    };
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        window.parent.postMessage({ kind: 'claw/pick-mode', active: false }, window.location.origin);
-      }
-    };
-
-    document.addEventListener('mousemove', onMove, true);
-    document.addEventListener('click', onClick, true);
-    document.addEventListener('keydown', onKey, true);
-    return () => {
-      html.style.cursor = prevCursor;
-      document.removeEventListener('mousemove', onMove, true);
-      document.removeEventListener('click', onClick, true);
-      document.removeEventListener('keydown', onKey, true);
-    };
-  }, [active, projectRoot]);
-
-  if (!active) return null;
-  return (
-    <div
-      ref={overlayRef}
-      aria-hidden
-      style={{
-        display: 'none',
-        position: 'fixed',
-        pointerEvents: 'none',
-        zIndex: 2147483647,
-        border: '2px solid #818cf8',
-        background: 'rgba(99, 102, 241, 0.08)',
-        boxShadow: '0 0 0 1px rgba(255,255,255,0.1)',
-        transition: 'all 60ms ease-out',
-      }}
-    />
-  );
-}
+```
+[<h1>]  "I am an empty canvas."    · Home  ✕
 ```
 
-Inline styles — intentional. The picker must survive whatever styles the user's app applies (including edits they'll make). No Tailwind class that could be purged; no CSS that the agent could overwrite.
-
-## AppShell wiring
-
-New state: `pickMode: boolean`, `references: ElementRef[]`. New ref: `iframeRef`.
-
-- On mount, GET `/api/agent/health` → store `projectRoot`.
-- When iframe posts `claw/ready`, parent responds with `{ kind: 'claw/init', projectRoot }`.
-- When user toggles pick mode (button/Cmd+P), parent posts `{ kind: 'claw/pick-mode', active: <new value> }`.
-- When iframe posts `claw/pick`, push `ref` into `references`. **Stay in pick mode** (user can pick more). Exit via Escape or by clicking Send.
-- Clear `references` after `send()` resolves.
-
-Expose `iframeRef.current?.contentWindow?.postMessage(...)` via `PreviewFrame`'s new `send(msg)` method or via a `ref` forwarded through.
-
-Implementation pattern: use `React.forwardRef` on `PreviewFrame` to expose `{ send(msg: unknown): void }`.
-
-## Composer changes
-
-Props now include `references: ElementRef[]` and `onRemoveReference(id)`. Render chips above the textarea:
-
-```tsx
-{references.length > 0 && (
-  <div className="mb-2 flex flex-wrap gap-1.5">
-    {references.map(r => (
-      <ReferenceChip key={r.id} refData={r} onRemove={() => onRemoveReference(r.id)} />
-    ))}
-  </div>
-)}
-```
-
-On send, call `onSend(text, references)`. The chips disappear because AppShell clears the array.
-
-## ReferenceChip — `template/components/ReferenceChip.tsx`
-
-```tsx
-'use client';
-import type { ElementRef } from '@/lib/react-source';
-
-export default function ReferenceChip({ refData, onRemove }: { refData: ElementRef; onRemove: () => void }) {
-  return (
-    <span className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-indigo-500/40 bg-indigo-500/10 px-2 py-1 text-xs text-indigo-200">
-      <span className="font-semibold uppercase tracking-wide">&lt;{refData.tagName.toLowerCase()}&gt;</span>
-      {refData.textSnippet && <span className="truncate max-w-[140px] italic">"{refData.textSnippet}"</span>}
-      <span className="font-mono text-indigo-300/70">{refData.fileName}:{refData.lineNumber}</span>
-      <button
-        onClick={onRemove}
-        aria-label="Remove reference"
-        className="ml-1 rounded text-indigo-300 hover:bg-indigo-500/20 hover:text-indigo-100 px-1"
-      >×</button>
-    </span>
-  );
-}
-```
-
-## Pick toggle in ChatPanel header
-
-```tsx
-<header …>
-  <div>
-    <h2 …>Build this app</h2>
-    <p …>…</p>
-  </div>
-  <div className="flex items-center gap-1">
-    <button
-      onClick={onTogglePick}
-      aria-pressed={pickMode}
-      aria-label="Toggle pick mode"
-      className={`rounded p-1.5 text-xs hover:bg-neutral-800 ${pickMode ? 'bg-indigo-500/20 text-indigo-200 ring-1 ring-indigo-500/40' : 'text-neutral-400'}`}
-      title="Pick element (P)"
-    >
-      ⌖ Pick
-    </button>
-    <button onClick={onClose} aria-label="Close chat" className="rounded p-1 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100">✕</button>
-  </div>
-</header>
-```
-
-Keyboard shortcut: in AppShell, register `keydown` on `document` — if `e.key === 'p' && !e.metaKey && !e.ctrlKey && !e.altKey && activeTag === 'body'`, toggle pick mode. Low priority; fine to skip for MVP.
-
-## Hook change — `useAgentStream`
-
-Signature becomes:
-
-```ts
-send(prompt: string, references?: ElementRef[]): Promise<void>
-```
-
-Body POST to `/api/agent` includes `references` when provided.
-
-## Server — formatting references into the prompt
-
-`app/api/agent/route.ts` accepts `references: ElementRef[] | undefined`. Before handing to `runAgent`, wrap the prompt:
-
-```ts
-function buildPromptWithReferences(userPrompt: string, refs: ElementRef[] | undefined): string {
-  if (!refs || refs.length === 0) return userPrompt;
-  const lines = refs.map((r, i) => {
-    const txt = r.textSnippet ? ` "${r.textSnippet}"` : '';
-    return `  ${i + 1}. <${r.tagName.toLowerCase()}>${txt} — ${r.fileName}:${r.lineNumber} (component: ${r.componentName})`;
-  });
-  return [
-    'The user clicked these elements in the preview. They are referring to these specifically:',
-    ...lines,
-    '',
-    `User request: ${userPrompt}`,
-  ].join('\n');
-}
-```
-
-Validate `references` shape defensively — each must be an object with a string `fileName`, positive integer `lineNumber`, etc. On malformed input, ignore (don't error out); the user still gets a response to their text prompt.
-
-**Do not add structured references to the AgentEvent protocol.** They're input-only; the server uses them to synthesize a plain-text prompt. Agent's response is regular text + tool_use like always.
+- Tag: small rounded pill with indigo styling.
+- Text: italic, max 32 chars, ellipsis if longer.
+- componentChain first segment (if present): faint, after a middot.
+- If `text` is empty, falls back to first class or domPath tail so chips are never blank.
+- `✕` remove button.
 
 ## Acceptance tests
 
-Write `docs/testing/wave4-e2e.md` with the usual step table. Key checks:
-
-1. `bun run build` passes.
-2. Visit `/`. Chat panel visible; iframe visible with "I am an empty canvas." inside.
-3. Agent: "change the background to white" → edits `app/preview/globals.css` or `app/preview/layout.tsx` only. Iframe turns white; chat stays dark.
-4. Click **Pick element** → cursor is crosshair in iframe; hover highlights.
-5. Click the `<h1>`. Chip appears in composer: `<h1> "I am an empty canvas." · app/preview/page.tsx:10`.
-6. Pick another (e.g. the first tile's `<h3>`). Two chips.
-7. Type "make both text red" and Send.
-8. Watch agent Read + Edit the two specific lines. Tool chips fire.
-9. After completion, both elements are red in the iframe. Chips cleared from composer.
-10. Escape exits pick mode even without a pick.
+1. `bun run build` passes — TypeScript and Next.js build clean.
+2. Visit `/`. Chat panel visible; iframe shows the canvas page.
+3. Click **Pick element** → cursor is crosshair in iframe; hover outlines elements.
+4. Click the `<h1>`. Chip appears: `<h1> "I am an empty canvas." · Home  ✕`.
+5. `getElementRef(h1)` returns non-empty `text`, `classes`, `domPath`.
+6. Send "make the heading red" with the chip attached.
+7. Agent greps for the text content, finds `app/preview/page.tsx`, edits the class. ≤3 turns.
+8. After send, heading is red; chip is cleared from composer.
+9. Escape exits pick mode without picking.
 
 ## Gotchas
 
-- **`_debugSource` only exists in dev builds.** In production, Fiber has no source info. Picker silently falls back to `null` from `getElementRef`. Document this; picker works only in `bun dev`. That's fine — our distribution target is dev mode.
-- **HMR invalidates line numbers.** After the agent Edits a file, line numbers in old references may point to different lines. Minor; references are meant to be used immediately, not stored. Clear references after send() (already spec'd).
-- **Server Components at the root of preview** still have Fiber (after hydration). If a pure server component renders a `<div>` with no client boundary, that div has fiber nodes from the hydration pass. Works in practice. If it doesn't for some element, fall back: user sees no chip, tries again on a nearby element.
-- **Picker crosshair applies to entire iframe document.** Good — that's the whole area to pick from.
-- **Don't let picker pick its own overlay.** Handled by the `t === overlayRef.current` check.
-- **CSS specificity**: user's app styling can't override the inline styles on the overlay (inline styles have highest specificity short of `!important`).
+- **Production builds**: Fiber is present after hydration, but `_debugSource` was never used here anyway. DOM text + classes are always available regardless of build mode.
+- **HMR invalidates text/classes after agent edits**: references are meant to be used immediately, then cleared. That's why `setReferences([])` fires after `send()`.
+- **Picker crosshair covers entire iframe document** — correct behavior.
+- **Overlay is never picked**: handled by `t === overlayRef.current` check.
+- **CSS specificity**: inline styles on the overlay can't be overridden by user app styles.
 
 ## Commit
 
-`feat(picker): click-to-reference element picker wired through iframe postMessage`
+`refactor(picker): drop _debugSource, capture DOM context for grep-based resolution`
