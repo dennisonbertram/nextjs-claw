@@ -78,3 +78,9 @@ A human clones the template via `npx nextjs-claw my-app`, runs `bun install && b
 The embedded agent uses a collection of opinionated recipes for adding capabilities (database, auth, email, payments, etc.) to a user's app. Each recipe specifies exact library choices, file layouts, and commands — so the agent never has to guess.
 
 See [`docs/stack/README.md`](../stack/README.md) for the full list of recipes and the capability → recipe map.
+
+## Template Recipes
+
+The embedded agent also has a library of visual/structural starter shapes — complete pages the agent drops into `app/preview/` when a user asks for a specific kind of site ("make me a SaaS landing page", "give me a pricing page", "turn this into a portfolio", etc.). Each recipe includes copy-pasteable TSX + Tailwind code, design token guidance, and integration instructions.
+
+See [`docs/templates/README.md`](../templates/README.md) for the full index (12 templates covering SaaS landing, pricing, portfolio, blog, dashboard shell, docs site, agency, restaurant, conference, newsletter, and coming-soon).
