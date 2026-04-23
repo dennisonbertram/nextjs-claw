@@ -1,0 +1,27 @@
+{
+  "name": "nextjs-claw-demo",
+  "version": "1.0.0",
+  "description": "Remotion demo video for nextjs-claw starter",
+  "private": true,
+  "scripts": {
+    "start": "remotion studio",
+    "build": "remotion render Demo out/nextjs-claw-demo.mp4 --codec=h264 --crf=22 --pixel-format=yuv420p",
+    "render": "remotion render Demo out/nextjs-claw-demo.mp4 --codec=h264 --crf=22 --pixel-format=yuv420p",
+    "render:gif": "remotion render Demo out/nextjs-claw-demo.gif --width=960 --height=540 --image-format=png"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.288",
+    "@remotion/google-fonts": "4.0.288",
+    "remotion": "4.0.288",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.4",
+    "@types/react-dom": "19.1.4",
+    "typescript": "5.8.3"
+  },
+  "remotion": {
+    "entryPoint": "src/index.ts"
+  }
+}

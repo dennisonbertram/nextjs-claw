@@ -9,3 +9,8 @@ template/bun.lockb
 template/package-lock.json
 template/next-env.d.ts
 template/*.tsbuildinfo
+
+# Remotion
+remotion/node_modules/
+remotion/out/
+remotion/.bundle/
