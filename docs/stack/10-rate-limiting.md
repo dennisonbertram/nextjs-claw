@@ -16,7 +16,7 @@ Two implementations: (a) a Postgres-backed sliding window using an `UNLOGGED` ta
 
 The Postgres option uses `UNLOGGED TABLE` which bypasses WAL (write-ahead log) for maximum insert speed. The data is lost on Postgres restart — acceptable for rate limit counters because a restart effectively resets counts (slightly more permissive, never more restrictive). The Redis option uses a `ZSET` sliding window via a Lua script that runs atomically, preventing race conditions.
 
-See also recipe 02 (`lib/auth/rate-limit.ts`) for a full Postgres-backed implementation used on the login endpoint.
+`lib/rate-limit/postgres.ts` in this recipe is the **canonical** Postgres sliding-window implementation. Recipe 02 (auth) imports `rateLimit` from `lib/rate-limit/index.ts` for login throttling — there is no separate `lib/auth/rate-limit.ts`. If you are setting up auth (recipe 02), install this recipe first.
 
 ## Files the agent creates
 
@@ -29,7 +29,7 @@ See also recipe 02 (`lib/auth/rate-limit.ts`) for a full Postgres-backed impleme
 
 ### `lib/rate-limit/postgres.ts`
 
-Full sliding-window implementation. Also shown in recipe 02 (`lib/auth/rate-limit.ts`) — consolidate if both recipes are used.
+Full sliding-window implementation. This is the canonical home. Recipe 02 (auth) imports from here for login rate limiting — do not create a separate `lib/auth/rate-limit.ts`.
 
 ```ts
 // lib/rate-limit/postgres.ts

@@ -177,6 +177,79 @@ export default async function ContactPage() {
 }
 ```
 
+## Merging with other middleware
+
+If the project also uses recipe 02 (auth), there can only be one `middleware.ts`. Merge both concerns into a single file using sequential checks:
+
+```ts
+// middleware.ts — merged: security headers + CSRF (recipe 11) + auth guard (recipe 02)
+import { NextRequest, NextResponse } from 'next/server';
+import { randomBytes } from 'node:crypto';
+
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const CSRF_EXEMPT = ['/preview/auth/oauth/', '/api/webhooks/'];
+const PROTECTED = ['/preview/dashboard', '/preview/settings', '/preview/account'];
+
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  // 1. Security headers (this recipe) — applied to all responses
+  const res = NextResponse.next();
+  res.headers.set('X-Content-Type-Options', 'nosniff');
+  res.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  const requestId = req.headers.get('x-request-id') ?? randomBytes(8).toString('hex');
+  res.headers.set('x-request-id', requestId);
+  // Add full CSP here (see the standalone middleware.ts above)
+
+  // 2. CSRF check (this recipe) — mutating methods on non-exempt routes
+  if (
+    MUTATING_METHODS.has(req.method) &&
+    !CSRF_EXEMPT.some((p) => pathname.startsWith(p))
+  ) {
+    const expectedOrigin = process.env.NEXT_PUBLIC_APP_URL;
+    const headerOrigin = req.headers.get('origin');
+    if (
+      process.env.NODE_ENV === 'production' &&
+      expectedOrigin &&
+      headerOrigin &&
+      headerOrigin !== expectedOrigin
+    ) {
+      return new NextResponse(JSON.stringify({ error: 'Origin mismatch' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    const cookieToken = req.cookies.get('csrf')?.value;
+    const headerToken = req.headers.get('x-csrf-token');
+    if (cookieToken && (!headerToken || headerToken !== cookieToken)) {
+      return new NextResponse(JSON.stringify({ error: 'CSRF validation failed' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
+  // 3. Auth guard (recipe 02) — protected paths require a session cookie
+  if (PROTECTED.some((p) => pathname.startsWith(p))) {
+    const session = req.cookies.get('session');
+    if (!session?.value) {
+      return NextResponse.redirect(new URL('/preview/login', req.url));
+    }
+  }
+
+  return res;
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};
+```
+
+See recipe 02 (`docs/stack/02-auth.md`) for the auth guard details and the full list of `PROTECTED` paths. The key rule: a Next.js project has exactly one `middleware.ts`; never have two recipes each writing their own.
+
 ## CSP Notes
 
 The sample CSP in `middleware.ts` is opinionated but permissive enough for most apps:

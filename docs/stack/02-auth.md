@@ -24,7 +24,7 @@ Complete user authentication without any external auth service. Covers: signup w
 - `lib/auth/hash.ts` — password hashing and verification
 - `lib/auth/session.ts` — create, read, refresh, and destroy sessions
 - `lib/auth/csrf.ts` — double-submit cookie CSRF protection
-- `lib/auth/rate-limit.ts` — per-IP login rate limiter (Postgres-backed)
+- `lib/auth/rate-limit.ts` — re-exported from `lib/rate-limit/postgres.ts` (recipe 10 is the canonical home)
 - `lib/auth/oauth.ts` — Google + GitHub OAuth via fetch + PKCE
 - `lib/auth/current-user.ts` — `getCurrentUser()` helper for Server Components
 - `app/preview/auth/signup/route.ts` — signup API
@@ -233,100 +233,29 @@ export async function validateCsrfToken(req: NextRequest): Promise<boolean> {
 }
 ```
 
-### `lib/auth/rate-limit.ts`
+### Login rate limiting — use recipe 10
+
+For login rate limiting, install recipe 10 first (`docs/stack/10-rate-limiting.md`), which provides the canonical `lib/rate-limit/postgres.ts` implementation. Then import `rateLimitPostgres` (or the unified `rateLimit` from `lib/rate-limit/index.ts`) and wrap the login handler:
 
 ```ts
-// lib/auth/rate-limit.ts
-// Postgres-backed sliding window rate limiter.
-// No Redis required. Uses UNLOGGED table for speed (data loss on crash is acceptable).
+// app/preview/auth/login/route.ts — rate limit example using recipe 10
+import { rateLimit } from '@/lib/rate-limit'; // from recipe 10
 
-import { pool } from '@/lib/db';
+export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] ?? '127.0.0.1';
+  const { allowed } = await rateLimit(`login:${ip}`, 10, 15 * 60 * 1000); // 10/15min
 
-// Run once at startup (or in a migration) to create the table
-export async function ensureRateLimitTable(): Promise<void> {
-  await pool.query(`
-    CREATE UNLOGGED TABLE IF NOT EXISTS rate_limit_buckets (
-      key        TEXT NOT NULL,
-      window_end TIMESTAMPTZ NOT NULL,
-      count      INT NOT NULL DEFAULT 0,
-      PRIMARY KEY (key, window_end)
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Too many attempts. Try again in 15 minutes.' },
+      { status: 429 },
     );
-    CREATE INDEX IF NOT EXISTS rl_window_end_idx ON rate_limit_buckets (window_end);
-  `);
-}
-
-interface RateLimitResult {
-  allowed: boolean;
-  remaining: number;
-  resetAt: Date;
-}
-
-/**
- * Sliding window rate limit.
- * @param key    Identifies the subject (e.g., IP address or user ID)
- * @param limit  Max requests per window
- * @param windowMs  Window size in milliseconds
- */
-export async function rateLimit(
-  key: string,
-  limit: number,
-  windowMs: number,
-): Promise<RateLimitResult> {
-  const now = new Date();
-  const windowEnd = new Date(Math.ceil(now.getTime() / windowMs) * windowMs);
-  const windowStart = new Date(windowEnd.getTime() - windowMs);
-
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-
-    // Upsert the current window bucket
-    const { rows } = await client.query<{ count: number }>(
-      `INSERT INTO rate_limit_buckets (key, window_end, count)
-       VALUES ($1, $2, 1)
-       ON CONFLICT (key, window_end)
-       DO UPDATE SET count = rate_limit_buckets.count + 1
-       RETURNING count`,
-      [key, windowEnd],
-    );
-
-    // Also count the previous partial window for sliding effect
-    const { rows: prev } = await client.query<{ count: number }>(
-      `SELECT COALESCE(SUM(count), 0) AS count
-       FROM rate_limit_buckets
-       WHERE key = $1 AND window_end > $2 AND window_end <= $3`,
-      [key, windowStart, windowEnd],
-    );
-
-    await client.query('COMMIT');
-
-    // Prune old buckets async (fire and forget)
-    pool.query(
-      `DELETE FROM rate_limit_buckets WHERE window_end < $1`,
-      [new Date(now.getTime() - windowMs * 2)],
-    ).catch(() => {});
-
-    const total = Number(prev[0]?.count ?? 0);
-    const current = Number(rows[0]?.count ?? 0);
-    // Sliding window: weight = (prev * overlap%) + current
-    const overlap = 1 - (now.getTime() % windowMs) / windowMs;
-    const weighted = Math.floor(
-      (total - current) * overlap + current,
-    );
-
-    return {
-      allowed: weighted <= limit,
-      remaining: Math.max(0, limit - weighted),
-      resetAt: windowEnd,
-    };
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
   }
+  // ... rest of login logic
 }
 ```
+
+Recipe 10 handles the `UNLOGGED TABLE` creation, sliding-window arithmetic, and async bucket pruning. There is no need for a separate `lib/auth/rate-limit.ts` — `lib/rate-limit/postgres.ts` is the single canonical home.
 
 ### `lib/auth/oauth.ts`
 
@@ -584,7 +513,7 @@ import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { verifyPassword } from '@/lib/auth/hash';
 import { createSession } from '@/lib/auth/session';
-import { rateLimit } from '@/lib/auth/rate-limit';
+import { rateLimit } from '@/lib/rate-limit'; // canonical impl from recipe 10
 import { eq } from 'drizzle-orm';
 
 export async function POST(req: NextRequest) {
@@ -666,6 +595,65 @@ export const config = {
   matcher: ['/preview/:path*'],
 };
 ```
+
+## Merging with other middleware
+
+If the project also uses recipe 11 (security headers + CSRF), there can only be one `middleware.ts`. Merge both concerns into a single file using sequential checks:
+
+```ts
+// middleware.ts — merged: security headers (recipe 11) + CSRF + auth guard (recipe 02)
+import { NextRequest, NextResponse } from 'next/server';
+import { randomBytes } from 'node:crypto';
+
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const CSRF_EXEMPT = ['/preview/auth/oauth/', '/api/webhooks/'];
+const PROTECTED = ['/preview/dashboard', '/preview/settings', '/preview/account'];
+
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  // 1. Security headers (recipe 11) — applied to all responses
+  const res = NextResponse.next();
+  res.headers.set('X-Content-Type-Options', 'nosniff');
+  res.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  const requestId = req.headers.get('x-request-id') ?? randomBytes(8).toString('hex');
+  res.headers.set('x-request-id', requestId);
+
+  // 2. CSRF check (recipe 11) — mutating methods on non-exempt routes
+  if (
+    MUTATING_METHODS.has(req.method) &&
+    !CSRF_EXEMPT.some((p) => pathname.startsWith(p))
+  ) {
+    const cookieToken = req.cookies.get('csrf')?.value;
+    const headerToken = req.headers.get('x-csrf-token');
+    if (cookieToken && (!headerToken || headerToken !== cookieToken)) {
+      return new NextResponse(JSON.stringify({ error: 'CSRF validation failed' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+  }
+
+  // 3. Auth guard (recipe 02) — protected paths require a session cookie
+  if (PROTECTED.some((p) => pathname.startsWith(p))) {
+    const session = req.cookies.get('session');
+    if (!session?.value) {
+      return NextResponse.redirect(new URL('/preview/login', req.url));
+    }
+  }
+
+  return res;
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};
+```
+
+See recipe 11 (`docs/stack/11-security-headers-and-csrf.md`) for the full CSP configuration and the complete CSRF origin check — the example above shows the structure only. The key rule: a Next.js project has exactly one `middleware.ts`; never have two recipes each writing their own.
 
 ## Commands to run
 
