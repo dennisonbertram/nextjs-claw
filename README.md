@@ -1,5 +1,7 @@
 # nextjs-claw
 
+![demo](./docs/demo/nextjs-claw-demo.gif)
+
 ![nextjs-claw](./banner.png)
 
 [![npm version](https://img.shields.io/npm/v/nextjs-claw)](https://www.npmjs.com/package/nextjs-claw)
