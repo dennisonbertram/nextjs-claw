@@ -93,6 +93,9 @@ export default function PreviewLayout({ children }: { children: React.ReactNode 
 // photo-1557804506-669a67965ba0 — Carlos Muza (@carlosmuza)
 // photo-1499951360447-b19be8fe80f5 — Christopher Gower (@cgower)
 // photo-1618005182384-a83a8bd57fbe — Steve Johnson (@steve_j)
+// photo-1506905925346-21bda4d32df4 — Sven Scheuermeier (@sven_scheuermeier)
+// photo-1531746020798-e6953c6e8e04 — Velizar Ivanov (@veliivanov)
+// photo-1501854140801-50d01698950b — Aniket Deole (@aniketh_d)
 
 const galleryImages = [
   { id: 'photo-1492691527719-9d1e07e534b4', alt: 'Mountain landscape at dusk', category: 'Landscape', aspect: 'tall' },
@@ -101,9 +104,9 @@ const galleryImages = [
   { id: 'photo-1557804506-669a67965ba0', alt: 'Data visualization light trails', category: 'Abstract', aspect: 'wide' },
   { id: 'photo-1499951360447-b19be8fe80f5', alt: 'Laptop in low light', category: 'Portrait', aspect: 'wide' },
   { id: 'photo-1618005182384-a83a8bd57fbe', alt: 'Colorful abstract paint', category: 'Abstract', aspect: 'wide' },
-  { id: 'photo-1492691527719-9d1e07e534b4', alt: 'Mountain ridge in fog', category: 'Landscape', aspect: 'wide' },
-  { id: 'photo-1545665277-5937489579f2', alt: 'Monochrome still life', category: 'Still Life', aspect: 'tall' },
-  { id: 'photo-1486312338219-ce68d2c6f44d', alt: 'Desk with notebook', category: 'Still Life', aspect: 'wide' },
+  { id: 'photo-1506905925346-21bda4d32df4', alt: 'Mountain ridge in evening light', category: 'Landscape', aspect: 'wide' },
+  { id: 'photo-1531746020798-e6953c6e8e04', alt: 'Portrait with soft rim light', category: 'Portrait', aspect: 'tall' },
+  { id: 'photo-1501854140801-50d01698950b', alt: 'Aerial landscape abstract', category: 'Landscape', aspect: 'wide' },
 ];
 
 const categories = ['All', 'Portrait', 'Landscape', 'Still Life', 'Abstract'];

@@ -314,8 +314,8 @@ export default function PricingPage() {
                     {rows.map(({ label, free, pro, enterprise }, i) => (
                       <tr key={label} className={`border-b border-neutral-800/40 ${i % 2 === 0 ? 'bg-neutral-900/30' : ''}`}>
                         <td className="py-3 px-4 text-neutral-400">{label}</td>
-                        <td className="py-3 px-4 text-center flex justify-center">
-                          <CellValue value={free} />
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex justify-center"><CellValue value={free} /></div>
                         </td>
                         <td className="py-3 px-4 text-center">
                           <div className="flex justify-center"><CellValue value={pro} /></div>
@@ -430,7 +430,7 @@ When the user asks for "a pricing page", "pricing tiers", "subscription plans pa
 
 ## Common pitfalls
 
-- The feature comparison table's `<td>` with `flex justify-center` works in a table cell only because of `display: flex` — table cells default to `table-cell` so you need the explicit flex wrapper or a `<div>` inside the `<td>`.
+- The feature comparison table uses `<div className="flex justify-center">` inside each `<td>` to center icons and text. This is the correct pattern shown in the code above — `flex` must not be applied directly to `<td>` because table cells default to `display: table-cell`, which makes `flex` inert and leaves icons left-aligned. Always wrap the cell content in an inner `<div>` when you need flexbox alignment.
 - `<details>`/`<summary>` accordion: the `.faq-chevron` CSS rotation trick requires `details[open] .faq-chevron` in a stylesheet — Tailwind's `group-open:rotate-180` utility also works if you prefer staying in-class.
 - The comparison table category rows have `colSpan={4}` — if you change the number of columns (e.g., add an "Unlimited" tier), increment `colSpan` or the category header won't span the full width.
 - "Most popular" badge uses `absolute -top-3` — the parent card must have `relative` positioning or the badge escapes its intended container.

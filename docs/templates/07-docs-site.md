@@ -21,7 +21,7 @@ Inspiration URLs (confirmed live 2026-04-23):
 - **Key ideas:**
   - Three-column grid: `grid-cols-[240px_1fr_200px]` on xl; collapses to single-column on mobile (sidebar becomes a dropdown drawer)
   - Code blocks: `bg-neutral-900 border border-neutral-800 rounded-xl` with a language label badge, line numbers optional
-  - On-this-page nav uses sticky positioning and highlights the active heading based on scroll (static version shows all links without active state — agent can add IntersectionObserver if needed)
+  - On-this-page nav uses sticky positioning and highlights the active heading based on scroll using an `IntersectionObserver` with `rootMargin: '-80px 0px -50% 0px'` (accounts for the fixed header and ensures only headings near the top of the viewport are treated as "active")
   - Prev/next pagination with article title at the bottom — same visual weight as a standard link, not a loud CTA button
 
 ## Sections (in order)
@@ -94,7 +94,7 @@ export default function PreviewLayout({ children }: { children: React.ReactNode 
 ```tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const sidebar = [
   {
@@ -191,6 +191,32 @@ export default function DocsPage() {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(sidebar.map((s) => [s.section, true]))
   );
+  const [activeId, setActiveId] = useState<string>('');
+
+  // Scroll-active highlighting: observe all h2/h3 inside the article.
+  // rootMargin '-80px 0px -50% 0px' — top offset for the fixed header, bottom threshold
+  // so the "current" heading is one near the top of the screen, not barely in view.
+  useEffect(() => {
+    const headings = Array.from(
+      document.querySelectorAll<HTMLElement>('main h2[id], main h3[id]'),
+    );
+    if (headings.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveId(entry.target.id);
+            break; // first intersecting heading wins
+          }
+        }
+      },
+      { rootMargin: '-80px 0px -50% 0px' },
+    );
+
+    headings.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
 
   const toggleSection = (section: string) => {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -446,16 +472,24 @@ try {
           <div>
             <p className="text-xs font-mono text-neutral-600 uppercase tracking-widest mb-3">On this page</p>
             <ul className="space-y-1.5">
-              {onThisPage.map(({ label, href }) => (
-                <li key={label}>
-                  <a
-                    href={href}
-                    className="text-xs text-neutral-500 hover:text-neutral-200 transition-colors leading-relaxed block"
-                  >
-                    {label}
-                  </a>
-                </li>
-              ))}
+              {onThisPage.map(({ label, href }) => {
+                const id = href.replace('#', '');
+                const isActive = activeId === id;
+                return (
+                  <li key={label}>
+                    <a
+                      href={href}
+                      className={`text-xs leading-relaxed block transition-colors ${
+                        isActive
+                          ? 'text-indigo-400 font-medium'
+                          : 'text-neutral-500 hover:text-neutral-200'
+                      }`}
+                    >
+                      {label}
+                    </a>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </aside>
@@ -482,3 +516,5 @@ When the user asks for "a docs site", "documentation page", "developer docs", "A
 - `CodeBlock` uses `navigator.clipboard.writeText` which requires HTTPS or `localhost` — in the preview, this fails silently on non-secure origins. Add a `try/catch` around the clipboard call if needed.
 - The `openSections` state initializer maps all sections to `true` (expanded) by default. On mobile, initializing them all `false` (collapsed) improves first-load experience — consider `window.innerWidth < 768 ? false : true` in the initializer.
 - The left sidebar's active item uses `border-l-2 border-indigo-500` with `-ml-px pl-[calc(1rem_-_1px)]` to visually align the left border without shifting the text. Removing `-ml-px` creates a visible 1px indent — cosmetically minor but noticeable at 2x display density.
+- The on-this-page `IntersectionObserver` uses `rootMargin: '-80px 0px -50% 0px'`: the `-80px` top offset accounts for the 56px fixed header; the `-50%` bottom threshold ensures only headings in the upper half of the viewport are considered "in view". Without the bottom threshold, scrolling down slowly can make a heading at the very bottom of the screen briefly activate before the reader reaches it. Flicker is further suppressed by only updating `activeId` on the first `isIntersecting` entry in each callback batch.
+- `useEffect` with `IntersectionObserver` is safe here because `'use client'` is already declared at the top of the file — the observer only runs in the browser.
