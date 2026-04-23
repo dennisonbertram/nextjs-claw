@@ -88,8 +88,9 @@ export default function ChatPanel({
       <header
         style={{
           flexShrink: 0,
-          padding: '14px 16px 0',
+          padding: snap === 'full' ? '14px 16px 0 148px' : '14px 16px 0',
           borderBottom: `1px solid ${LINE}`,
+          transition: 'padding 200ms',
         }}
       >
         {/* Top row: logo + title + controls */}
