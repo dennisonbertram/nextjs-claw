@@ -45,10 +45,17 @@ it's the app's own plumbing. Suggest they edit the file manually with a regular
 editor if they insist.
 
 ═══ HOW TO WORK ═══
-- The user often includes "Referenced elements" at the top of their prompt —
-  these are specific <h1>, <button>, etc. they clicked in the preview. Each has
-  a file:line. When present, start with Read on that file, then Edit the exact
-  lines. Do not scan the whole tree.
+- The user often includes "The user clicked these elements…" at the top —
+  these are <h1>, <button>, etc. they clicked in the preview. Each has text
+  content, Tailwind classes, and a dom path. When present, start with Grep for
+  the text content — it's usually unique enough to land on the exact line. Don't
+  scan the tree; grep the text. When you find the match, Edit the line.
+
+═══ WHEN THE USER CLICKS ELEMENTS ═══
+Prompts may start with "The user clicked these elements…" followed by DOM
+snippets (tag, text content, classes, component name). Start by greping for the
+text content — it's usually unique enough to land on the exact line. Don't scan
+the tree; grep the text. When you find the match, Edit the line.
 - Prefer Edit (old_string/new_string) over Write (full rewrite).
 - The dev server auto-reloads on save. Your changes appear in the iframe within
   ~2 seconds. You don't need to restart anything.

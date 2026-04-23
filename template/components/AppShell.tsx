@@ -14,7 +14,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [health, setHealth] = useState<{ ok: boolean; hint?: string } | null>(null);
   const [pickMode, setPickMode] = useState(false);
   const [references, setReferences] = useState<ElementRef[]>([]);
-  const [projectRoot, setProjectRoot] = useState<string>('');
   const iframeRef = useRef<PreviewFrameHandle>(null);
   const agent = useAgentStream();
 
@@ -22,10 +21,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     fetch('/api/agent/health')
       .then(r => r.json())
-      .then((j: { ok: boolean; hint?: string; projectRoot?: string }) => {
+      .then((j: { ok: boolean; hint?: string }) => {
         if (!cancelled) {
           setHealth({ ok: j.ok, hint: j.hint });
-          if (j.projectRoot) setProjectRoot(j.projectRoot);
         }
       })
       .catch(() => { if (!cancelled) setHealth({ ok: false, hint: 'Health check failed.' }); });
@@ -36,8 +34,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const onIframeMessage = useCallback((data: unknown) => {
     const msg = data as { kind?: string; ref?: ElementRef; active?: boolean };
     if (msg?.kind === 'claw/ready') {
-      // Send init with projectRoot
-      iframeRef.current?.send({ kind: 'claw/init', projectRoot });
+      // Send current pick-mode state to bridge on ready
+      iframeRef.current?.send({ kind: 'claw/pick-mode', active: pickMode });
     }
     if (msg?.kind === 'claw/pick' && msg.ref) {
       setReferences(prev => [...prev, msg.ref!]);
@@ -45,14 +43,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (msg?.kind === 'claw/pick-mode') {
       setPickMode(!!msg.active);
     }
-  }, [projectRoot]);
-
-  // When projectRoot becomes available, re-send init if iframe is already ready
-  useEffect(() => {
-    if (projectRoot) {
-      iframeRef.current?.send({ kind: 'claw/init', projectRoot });
-    }
-  }, [projectRoot]);
+  }, [pickMode]);
 
   // Sync pick mode to iframe
   useEffect(() => {

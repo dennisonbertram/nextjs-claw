@@ -78,11 +78,11 @@ function parseReferences(raw: unknown): ElementRef[] | undefined {
   const valid = raw.filter((r): r is ElementRef => {
     if (!r || typeof r !== 'object') return false;
     const obj = r as Record<string, unknown>;
+    // New schema: tagName + text required; no fileName/lineNumber
     return (
-      typeof obj.fileName === 'string' &&
-      typeof obj.lineNumber === 'number' &&
-      obj.lineNumber > 0 &&
-      typeof obj.tagName === 'string'
+      typeof obj.tagName === 'string' &&
+      obj.tagName.length > 0 &&
+      typeof obj.text === 'string'
     );
   });
   return valid.length > 0 ? valid : undefined;
@@ -90,14 +90,29 @@ function parseReferences(raw: unknown): ElementRef[] | undefined {
 
 function buildPromptWithReferences(userPrompt: string, refs: ElementRef[] | undefined): string {
   if (!refs || refs.length === 0) return userPrompt;
-  const lines = refs.map((r, i) => {
-    const txt = r.textSnippet ? ` "${r.textSnippet}"` : '';
-    return `  ${i + 1}. <${r.tagName.toLowerCase()}>${txt} — ${r.fileName}:${r.lineNumber} (component: ${r.componentName})`;
-  });
-  return [
-    'The user clicked these elements in the preview. They are referring to these specifically:',
-    ...lines,
+
+  const lines: string[] = [
+    'The user clicked these elements in the preview. They\'re pointing to specific',
+    'spots in the source. Grep the codebase for the text or class strings to locate',
+    'them precisely — the source files are under `app/preview/`.',
     '',
-    `User request: ${userPrompt}`,
-  ].join('\n');
+  ];
+
+  refs.forEach((r, i) => {
+    lines.push(`${i + 1}. <${r.tagName}>${r.text ? ` "${r.text}"` : ''}`);
+    if (r.classes && r.classes.length > 0) {
+      lines.push(`   classes: ${r.classes.join(' ')}`);
+    }
+    if (r.domPath) {
+      lines.push(`   dom path: ${r.domPath}`);
+    }
+    if (r.componentChain) {
+      lines.push(`   component: ${r.componentChain.split(' → ')[0]}`);
+    }
+  });
+
+  lines.push('');
+  lines.push(`User request: ${userPrompt}`);
+
+  return lines.join('\n');
 }

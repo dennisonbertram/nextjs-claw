@@ -4,16 +4,14 @@ import { getElementRef } from '@/lib/react-source';
 
 export default function PickBridge() {
   const [active, setActive] = useState(false);
-  const [projectRoot, setProjectRoot] = useState<string>('');
   const overlayRef = useRef<HTMLDivElement>(null);
 
   // ── parent messages ──
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
-      const data = e.data as { kind?: string; active?: boolean; projectRoot?: string };
+      const data = e.data as { kind?: string; active?: boolean };
       if (data?.kind === 'claw/pick-mode') setActive(!!data.active);
-      if (data?.kind === 'claw/init' && typeof data.projectRoot === 'string') setProjectRoot(data.projectRoot);
     };
     window.addEventListener('message', onMsg);
     window.parent.postMessage({ kind: 'claw/ready' }, window.location.origin);
@@ -45,7 +43,7 @@ export default function PickBridge() {
       e.stopPropagation();
       const t = document.elementFromPoint(e.clientX, e.clientY);
       if (!t || t === overlayRef.current) return;
-      const ref = getElementRef(t, projectRoot);
+      const ref = getElementRef(t);
       if (ref) {
         window.parent.postMessage({ kind: 'claw/pick', ref }, window.location.origin);
       }
@@ -66,7 +64,7 @@ export default function PickBridge() {
       document.removeEventListener('click', onClick, true);
       document.removeEventListener('keydown', onKey, true);
     };
-  }, [active, projectRoot]);
+  }, [active]);
 
   if (!active) return null;
   return (
