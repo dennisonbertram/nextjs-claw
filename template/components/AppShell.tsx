@@ -1,4 +1,5 @@
 'use client';
+import '@/app/shell.css';
 import { useEffect, useState, useCallback } from 'react';
 import ChatPanel from './ChatPanel';
 import { useAgentStream } from '@/lib/use-agent-stream';
@@ -22,10 +23,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const toggle = useCallback(() => setOpen(v => !v), []);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden">
-      <main
-        className="relative flex-1 overflow-auto transition-[margin] duration-300 ease-out"
-      >
+    <div data-claw-shell className="flex h-screen w-screen overflow-hidden">
+      <main className="relative min-w-0 flex-1 bg-white">
         {children}
         {!open && (
           <button
