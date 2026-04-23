@@ -11,12 +11,13 @@ export async function GET() {
     });
     if (res.error || res.status !== 0) throw res.error ?? new Error('nonzero exit');
     const version = (res.stdout || res.stderr).trim();
-    return Response.json({ ok: true, claudeVersion: version });
+    return Response.json({ ok: true, claudeVersion: version, projectRoot: process.cwd() });
   } catch {
     return Response.json({
       ok: false,
       hint:
         'Install Claude Code CLI: `npm i -g @anthropic-ai/claude-code`, then run `claude login`.',
+      projectRoot: process.cwd(),
     });
   }
 }

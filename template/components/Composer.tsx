@@ -1,14 +1,18 @@
 'use client';
 import { useState, useRef, FormEvent, KeyboardEvent } from 'react';
+import ReferenceChip from './ReferenceChip';
+import type { ElementRef } from '@/lib/react-source';
 
 interface Props {
   disabled?: boolean;
   running: boolean;
-  onSend: (prompt: string) => void;
+  onSend: (prompt: string, refs?: ElementRef[]) => void;
   onStop: () => void;
+  references: ElementRef[];
+  onRemoveReference: (id: string) => void;
 }
 
-export default function Composer({ disabled, running, onSend, onStop }: Props) {
+export default function Composer({ disabled, running, onSend, onStop, references, onRemoveReference }: Props) {
   const [text, setText] = useState('');
   const taRef = useRef<HTMLTextAreaElement>(null);
 
@@ -16,7 +20,7 @@ export default function Composer({ disabled, running, onSend, onStop }: Props) {
     e?.preventDefault();
     const v = text.trim();
     if (!v || running || disabled) return;
-    onSend(v);
+    onSend(v, references.length > 0 ? references : undefined);
     setText('');
   };
 
@@ -26,6 +30,13 @@ export default function Composer({ disabled, running, onSend, onStop }: Props) {
 
   return (
     <form onSubmit={submit} className="border-t border-neutral-800 p-3">
+      {references.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {references.map(r => (
+            <ReferenceChip key={r.id} refData={r} onRemove={() => onRemoveReference(r.id)} />
+          ))}
+        </div>
+      )}
       <div className="flex items-end gap-2">
         <textarea
           ref={taRef}

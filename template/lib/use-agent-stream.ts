@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useRef, useState } from 'react';
 import type { AgentEvent } from './agent-events';
+import type { ElementRef } from './react-source';
 
 export type ToolState = 'running' | 'ok' | 'err';
 
@@ -25,7 +26,7 @@ export interface UseAgentStream {
   messages: ChatMessage[];
   running: boolean;
   sessionId?: string;
-  send: (prompt: string) => Promise<void>;
+  send: (prompt: string, references?: ElementRef[]) => Promise<void>;
   stop: () => void;
 }
 
@@ -132,7 +133,7 @@ export function useAgentStream(): UseAgentStream {
     setRunning(false);
   }, []);
 
-  const send = useCallback(async (prompt: string) => {
+  const send = useCallback(async (prompt: string, references?: ElementRef[]) => {
     if (running) return;
     const userMsg: ChatMessage = { role: 'user', text: prompt, parts: [] };
     const assistantMsg: ChatMessage = { role: 'assistant', parts: [] };
@@ -146,7 +147,7 @@ export function useAgentStream(): UseAgentStream {
       const res = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, sessionId }),
+        body: JSON.stringify({ prompt, sessionId, references }),
         signal: ctrl.signal,
       });
       if (!res.body) throw new Error('No response body');
@@ -180,7 +181,7 @@ export function useAgentStream(): UseAgentStream {
       setRunning(false);
       abortRef.current = null;
     }
-  }, [running, sessionId]);
+  }, [running, sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { messages, running, sessionId, send, stop };
 }

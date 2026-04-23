@@ -1,31 +1,86 @@
 'use client';
 import '@/app/shell.css';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import ChatPanel from './ChatPanel';
 import { useAgentStream } from '@/lib/use-agent-stream';
+import type { PreviewFrameHandle } from './PreviewFrame';
+import PreviewFrameComponent from './PreviewFrame';
+import type { ElementRef } from '@/lib/react-source';
 
 const PANEL_WIDTH = 420;
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(true); // open by default on first load
+  const [open, setOpen] = useState(true);
   const [health, setHealth] = useState<{ ok: boolean; hint?: string } | null>(null);
+  const [pickMode, setPickMode] = useState(false);
+  const [references, setReferences] = useState<ElementRef[]>([]);
+  const [projectRoot, setProjectRoot] = useState<string>('');
+  const iframeRef = useRef<PreviewFrameHandle>(null);
   const agent = useAgentStream();
 
   useEffect(() => {
     let cancelled = false;
     fetch('/api/agent/health')
       .then(r => r.json())
-      .then((j: { ok: boolean; hint?: string }) => { if (!cancelled) setHealth(j); })
+      .then((j: { ok: boolean; hint?: string; projectRoot?: string }) => {
+        if (!cancelled) {
+          setHealth({ ok: j.ok, hint: j.hint });
+          if (j.projectRoot) setProjectRoot(j.projectRoot);
+        }
+      })
       .catch(() => { if (!cancelled) setHealth({ ok: false, hint: 'Health check failed.' }); });
     return () => { cancelled = true; };
   }, []);
 
+  // Handle messages from iframe (picks + ready)
+  const onIframeMessage = useCallback((data: unknown) => {
+    const msg = data as { kind?: string; ref?: ElementRef; active?: boolean };
+    if (msg?.kind === 'claw/ready') {
+      // Send init with projectRoot
+      iframeRef.current?.send({ kind: 'claw/init', projectRoot });
+    }
+    if (msg?.kind === 'claw/pick' && msg.ref) {
+      setReferences(prev => [...prev, msg.ref!]);
+    }
+    if (msg?.kind === 'claw/pick-mode') {
+      setPickMode(!!msg.active);
+    }
+  }, [projectRoot]);
+
+  // When projectRoot becomes available, re-send init if iframe is already ready
+  useEffect(() => {
+    if (projectRoot) {
+      iframeRef.current?.send({ kind: 'claw/init', projectRoot });
+    }
+  }, [projectRoot]);
+
+  // Sync pick mode to iframe
+  useEffect(() => {
+    iframeRef.current?.send({ kind: 'claw/pick-mode', active: pickMode });
+  }, [pickMode]);
+
   const toggle = useCallback(() => setOpen(v => !v), []);
+
+  const togglePick = useCallback(() => setPickMode(v => !v), []);
+
+  const removeReference = useCallback((id: string) => {
+    setReferences(prev => prev.filter(r => r.id !== id));
+  }, []);
+
+  const handleSend = useCallback(async (prompt: string, refs?: ElementRef[]) => {
+    await agent.send(prompt, refs);
+    setReferences([]);
+    setPickMode(false);
+  }, [agent]);
 
   return (
     <div data-claw-shell className="flex h-screen w-screen overflow-hidden">
       <main className="relative min-w-0 flex-1 bg-white">
-        {children}
+        <PreviewFrameComponent
+          ref={iframeRef}
+          src="/preview"
+          onMessage={onIframeMessage}
+        />
         {!open && (
           <button
             onClick={toggle}
@@ -48,8 +103,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             messages={agent.messages}
             running={agent.running}
             sessionId={agent.sessionId}
-            onSend={agent.send}
+            onSend={handleSend}
             onStop={agent.stop}
+            pickMode={pickMode}
+            onTogglePick={togglePick}
+            references={references}
+            onRemoveReference={removeReference}
           />
         </div>
       </aside>
