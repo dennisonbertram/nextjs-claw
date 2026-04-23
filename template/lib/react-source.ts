@@ -120,6 +120,11 @@ const FRAMEWORK_INTERNALS = new Set([
   'ServerInsertedHTMLProvider', 'StylesheetResource', 'ScriptResource',
   'ReactDOMServerRenderer', 'Suspense', 'SuspenseList', 'StrictMode',
   'Fragment', 'Profiler', 'Root',
+  // Next.js 16 context providers
+  'LayoutRouterContext', 'GlobalLayoutRouterContext', 'PathnameContext',
+  'MissingSlotContext', 'SearchParamsContext', 'ActionQueueContext',
+  'RouterContext', 'DynamicServerError', 'HotReloader', 'ReactDevOverlay',
+  'NextSandpackCSSInjection', 'ServerComponentsHmrCache',
 ]);
 
 function typeOfName(t: unknown): string | null {
@@ -160,6 +165,11 @@ function buildComponentChain(fiber: MinimalFiber): string | undefined {
     const name = typeOfName(t);
     if (name && /^[A-Z]/.test(name)) {
       if (FRAMEWORK_INTERNALS.has(name)) break;
+      // Skip React context internals and providers — they're not meaningful component names
+      if (/Context$|Provider$|Consumer$|Router$|Boundary$|Handler$/.test(name)) {
+        cur = cur.return;
+        continue;
+      }
       if (!names.includes(name)) names.push(name);
     }
     cur = cur.return;
