@@ -26,10 +26,14 @@ export default function MessageList({ messages, running, onQuickPrompt }: Props)
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4">
-      <ol className="space-y-4">
+      <ol style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
         {messages.map((m, i) => (
           <li key={i}>
-            <MessageItem message={m} />
+            <MessageItem
+              message={m}
+              isLast={i === messages.length - 1}
+              running={running}
+            />
           </li>
         ))}
       </ol>

@@ -12,6 +12,11 @@ interface Props {
   onRemoveReference: (id: string) => void;
 }
 
+const ACCENT = '#c2410c';
+const INK    = '#1a1816';
+const MUTED  = '#6b6862';
+const LINE   = '#e2dbc9';
+
 export default function Composer({ disabled, running, onSend, onStop, references, onRemoveReference }: Props) {
   const [text, setText] = useState('');
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -29,36 +34,141 @@ export default function Composer({ disabled, running, onSend, onStop, references
   };
 
   return (
-    <form onSubmit={submit} className="border-t border-neutral-800 p-3">
+    <form
+      onSubmit={submit}
+      style={{
+        flexShrink: 0,
+        padding: '10px 14px 14px',
+        borderTop: `1px solid ${LINE}`,
+      }}
+    >
+      {/* Reference chips */}
       {references.length > 0 && (
-        <div className="mb-2 flex flex-wrap gap-1.5">
+        <div style={{ marginBottom: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {references.map(r => (
             <ReferenceChip key={r.id} refData={r} onRemove={() => onRemoveReference(r.id)} />
           ))}
         </div>
       )}
-      <div className="flex items-end gap-2">
+
+      {/* Composer box */}
+      <div
+        style={{
+          background: '#fffdf6',
+          border: `1px solid ${LINE}`,
+          borderRadius: 10,
+          padding: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          opacity: disabled ? 0.6 : 1,
+        }}
+      >
         <textarea
           ref={taRef}
           value={text}
           onChange={e => setText(e.target.value)}
           onKeyDown={onKey}
-          placeholder={disabled ? 'Install Claude Code to chat…' : 'Describe what to build…'}
+          placeholder={
+            disabled  ? 'Install Claude Code to chat…' :
+            running   ? 'Claude is working…' :
+                        'Describe what to build, or paste a design.'
+          }
           rows={2}
           disabled={disabled}
-          className="flex-1 resize-none rounded-md border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+          style={{
+            border: 'none',
+            outline: 'none',
+            background: 'transparent',
+            resize: 'none',
+            color: INK,
+            fontSize: 13,
+            fontFamily: 'inherit',
+            lineHeight: 1.5,
+          }}
         />
-        {running ? (
-          <button type="button" onClick={onStop}
-            className="rounded-md bg-rose-600 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500">
-            Stop
-          </button>
-        ) : (
-          <button type="submit" disabled={disabled || !text.trim()}
-            className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-40">
-            Send
-          </button>
-        )}
+
+        {/* Bottom row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Ghost icon row */}
+          <div style={{ display: 'flex', gap: 4 }}>
+            {/* Paperclip */}
+            <button
+              type="button"
+              title="Attach file"
+              style={{ background: 'none', border: 'none', color: MUTED, width: 22, height: 22, borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M10 6L6.5 9.5a2 2 0 01-3-3L8 2a3 3 0 014 4l-5 5" />
+              </svg>
+            </button>
+            {/* Plus circle */}
+            <button
+              type="button"
+              title="Add context"
+              style={{ background: 'none', border: 'none', color: MUTED, width: 22, height: 22, borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="7" cy="7" r="5" />
+                <path d="M5 7h4M7 5v4" />
+              </svg>
+            </button>
+            {/* Hash */}
+            <button
+              type="button"
+              title="Reference"
+              style={{ background: 'none', border: 'none', color: MUTED, width: 22, height: 22, borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M2 4h10M2 7h10M2 10h6" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Send / Stop */}
+          {running ? (
+            <button
+              type="button"
+              onClick={onStop}
+              style={{
+                background: 'transparent',
+                color: INK,
+                border: `1px solid ${LINE}`,
+                padding: '5px 12px',
+                fontSize: 12,
+                fontWeight: 500,
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span style={{ width: 8, height: 8, background: INK, borderRadius: 1, display: 'inline-block' }} />
+              Stop
+            </button>
+          ) : (
+            <button
+              type="submit"
+              disabled={disabled || !text.trim()}
+              style={{
+                background: disabled || !text.trim() ? '#e2dbc9' : ACCENT,
+                color: '#fff',
+                border: 'none',
+                padding: '5px 14px',
+                fontSize: 12,
+                fontWeight: 500,
+                borderRadius: 6,
+                cursor: disabled || !text.trim() ? 'not-allowed' : 'pointer',
+                fontFamily: 'inherit',
+                transition: 'background 150ms',
+              }}
+            >
+              Build ↵
+            </button>
+          )}
+        </div>
       </div>
     </form>
   );
