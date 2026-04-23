@@ -72,3 +72,9 @@ So the agent engine **spawns `claude` as a subprocess** with `--output-format st
 ## Success criteria
 
 A human clones the template via `npx nextjs-claw my-app`, runs `bun install && bun dev`, opens the URL, clicks the chat toggle, types "change the hero title to 'Hello, Claude'", and within 10 seconds sees the hero title change in-browser without a page reload. Tool use chips ("Editing app/page.tsx…") appear and complete in the chat. That's the MVP.
+
+## Stack Cookbook
+
+The embedded agent uses a collection of opinionated recipes for adding capabilities (database, auth, email, payments, etc.) to a user's app. Each recipe specifies exact library choices, file layouts, and commands — so the agent never has to guess.
+
+See [`docs/stack/README.md`](../stack/README.md) for the full list of recipes and the capability → recipe map.
