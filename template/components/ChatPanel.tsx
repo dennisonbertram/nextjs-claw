@@ -50,7 +50,11 @@ export default function ChatPanel({
         </div>
       </header>
       {health && !health.ok && <HealthBanner hint={health.hint} />}
-      <MessageList messages={messages} running={running} />
+      <MessageList
+        messages={messages}
+        running={running}
+        onQuickPrompt={(prompt) => onSend(prompt)}
+      />
       <Composer
         disabled={health ? !health.ok : false}
         running={running}
