@@ -4,5 +4,8 @@ node_modules/
 .DS_Store
 template/node_modules/
 template/.next/
+template/bun.lock
 template/bun.lockb
 template/package-lock.json
+template/next-env.d.ts
+template/*.tsbuildinfo
