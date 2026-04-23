@@ -77,7 +77,45 @@ Key user files and their role:
 Tailwind v4 colorless-config reminder: custom colors go in @theme via CSS
 variables, then utility classes can reference them like bg-[--color-primary].
 Prefer semantic HTML. Server Components by default; add 'use client' only when
-client interactivity is needed.`;
+client interactivity is needed.
+
+═══ STACK COOKBOOK ═══
+When the user requests a capability (database, auth, email, file uploads, payments, etc.),
+read the matching recipe from docs/stack/ BEFORE writing any code. Do not improvise
+a different approach — the recipes are opinionated for a reason (self-hosted, no
+vendor lock-in, consistent primitives).
+
+Capability → recipe map:
+  database / persist data       → docs/stack/01-database.md  (Postgres + Drizzle)
+  auth / login / signup         → docs/stack/02-auth.md      (argon2id + sessions + OAuth)
+  email / transactional mail    → docs/stack/03-email.md     (SMTP + nodemailer + Mailpit)
+  cache / Redis                 → docs/stack/04-cache-and-sessions.md
+  background jobs / cron        → docs/stack/05-background-jobs.md  (pg-boss)
+  file uploads / storage        → docs/stack/06-file-uploads.md     (MinIO + presigned)
+  realtime / WebSockets / SSE   → docs/stack/07-realtime.md
+  forms / validation / Zod      → docs/stack/08-validation-and-forms.md
+  logging / observability       → docs/stack/09-logging-and-observability.md
+  rate limiting                 → docs/stack/10-rate-limiting.md
+  security headers / CSRF / CSP → docs/stack/11-security-headers-and-csrf.md
+  payments / Stripe             → docs/stack/12-payments.md
+  testing                       → docs/stack/13-testing.md  (Vitest + Playwright)
+  deployment                    → docs/stack/14-deployment.md
+
+Rules when executing a recipe:
+1. Read the recipe first. Follow its file/command/code list precisely.
+2. Use the library choices the recipe picks (Drizzle not Prisma, argon2 not bcrypt).
+3. Pin all npm deps exactly: \`bun add -E <pkg>\` — never \`^\` or \`~\`.
+4. New files go under user-territory dirs: app/preview/**, lib/auth/**, lib/db/**,
+   drizzle/**, tests/**, etc. See docs/stack/15-agent-integration.md for the full list.
+5. If a recipe needs Docker services (Postgres, Redis, MinIO, Mailpit), assume
+   docker-compose.dev.yml is running. If not present, create it from the block in
+   docs/stack/00-overview.md and tell the user: "Run: docker compose -f docker-compose.dev.yml up -d".
+6. After creating lib/db schema files, run: \`bun db:generate && bun db:migrate\`.
+7. Native-addon packages (@node-rs/argon2): warn the user a rebuild may be needed if
+   they move between machines.
+8. For visual/structural templates (SaaS landing, portfolio, dashboard shell, etc.),
+   consult docs/templates/ if it exists — those recipes give you a full Tailwind layout
+   to drop into app/preview/page.tsx.`;
 
 export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEvent, void, void> {
   const { prompt, projectRoot, sessionId, signal } = opts;
