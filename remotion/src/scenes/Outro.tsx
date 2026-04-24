@@ -8,6 +8,7 @@ import {
 } from "remotion";
 import { palette } from "../palette";
 import { InfiniteLogo } from "../components/InfiniteLogo";
+import { Grain } from "../components/Grain";
 import { loadFont as loadInter } from "@remotion/google-fonts/Inter";
 import { loadFont as loadJetBrains } from "@remotion/google-fonts/JetBrainsMono";
 
@@ -21,45 +22,45 @@ const { fontFamily: monoFont } = loadJetBrains("normal", {
   subsets: ["latin"],
 });
 
-// Scene 6: Outro — 75 frames (2.5s)
-// Each element springs in staggered over first 45f
-// Hold from 45-60f, then dim 60-75f
+// Scene 6: Outro — 90 frames (3s) — huge CTA, hold for full 3s so viewers can read
+// Logo springs in, title fades, terminal box slides up + scales in
+// URL fades in last
+// NO dim at end — hold full opacity the whole time
+
 export const Outro: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  const makeSpring = (startFrame: number) =>
+  const makeSpring = (startFrame: number, config?: { damping?: number; stiffness?: number }) =>
     spring({
       frame: frame - startFrame,
       fps,
       from: 0,
       to: 1,
-      config: { damping: 14, stiffness: 160 },
-      durationInFrames: 16,
+      config: { damping: 14, stiffness: 160, ...config },
+      durationInFrames: 20,
     });
 
-  const logoSpring = makeSpring(0);
+  const logoSpring = makeSpring(0, { stiffness: 180, damping: 12 });
   const titleSpring = makeSpring(8);
-  const dividerSpring = makeSpring(15);
-  const cmdSpring = makeSpring(22);
-  const urlSpring = makeSpring(30);
-
-  // Whole composition dims at the very end
-  const outroOpacity = interpolate(frame, [58, 75], [1, 0.6], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
+  const cmdSpring = makeSpring(18, { stiffness: 200, damping: 14 });
+  const urlSpring = makeSpring(32);
 
   // Rotating background
-  const bgRotation = interpolate(frame, [0, 75], [0, 12], {
+  const bgRotation = interpolate(frame, [0, 90], [0, 12], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  const makeEntryStyle = (springVal: number, translateY = 20) => ({
+  const makeEntryStyle = (springVal: number, translateY = 24) => ({
     opacity: interpolate(springVal, [0, 0.3, 1], [0, 0.4, 1]),
     transform: `translateY(${interpolate(springVal, [0, 1], [translateY, 0])}px)`,
   });
+
+  // Terminal box: scale 0.8→1.0 + slide up + opacity
+  const cmdScale = interpolate(cmdSpring, [0, 1], [0.8, 1.0]);
+  const cmdOpacity = interpolate(cmdSpring, [0, 0.3, 1], [0, 0.5, 1]);
+  const cmdY = interpolate(cmdSpring, [0, 1], [30, 0]);
 
   return (
     <AbsoluteFill
@@ -68,7 +69,6 @@ export const Outro: React.FC = () => {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        opacity: outroOpacity,
       }}
     >
       <div
@@ -76,28 +76,32 @@ export const Outro: React.FC = () => {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: 20,
+          gap: 24,
+          width: "100%",
+          maxWidth: 900,
+          padding: "0 80px",
         }}
       >
         {/* Logo */}
         <div
           style={{
-            ...makeEntryStyle(logoSpring, 30),
-            transform: `translateY(${interpolate(logoSpring, [0, 1], [30, 0])}px) scale(${interpolate(logoSpring, [0, 1], [0.5, 1])}) rotate(${interpolate(logoSpring, [0, 1], [-20, 0])}deg)`,
+            opacity: interpolate(logoSpring, [0, 0.3, 1], [0, 0.4, 1]),
+            transform: `translateY(${interpolate(logoSpring, [0, 1], [40, 0])}px) scale(${interpolate(logoSpring, [0, 1], [0.5, 1])}) rotate(${interpolate(logoSpring, [0, 1], [-20, 0])}deg)`,
           }}
         >
-          <InfiniteLogo size={72} />
+          <InfiniteLogo size={80} />
         </div>
 
         {/* Title */}
         <div style={makeEntryStyle(titleSpring)}>
           <div
             style={{
-              fontSize: 32,
+              fontSize: 40,
               fontWeight: 600,
               color: palette.ink,
               fontFamily: interFont,
               letterSpacing: -0.5,
+              textAlign: "center",
             }}
           >
             the infinite app
@@ -107,36 +111,60 @@ export const Outro: React.FC = () => {
         {/* Divider */}
         <div
           style={{
-            opacity: interpolate(dividerSpring, [0, 1], [0, 1]),
-            transform: `scaleX(${interpolate(dividerSpring, [0, 1], [0, 1])})`,
+            opacity: interpolate(titleSpring, [0, 1], [0, 1]),
+            transform: `scaleX(${interpolate(titleSpring, [0, 1], [0, 1])})`,
             transformOrigin: "center",
+          }}
+        >
+          <div style={{ width: 40, height: 2, background: palette.accent }} />
+        </div>
+
+        {/* Terminal CTA box — massive, dark ink bg, cream fg, coral top-border */}
+        <div
+          style={{
+            opacity: cmdOpacity,
+            transform: `translateY(${cmdY}px) scale(${cmdScale})`,
           }}
         >
           <div
             style={{
-              width: 32,
-              height: 1,
-              background: palette.accent,
-            }}
-          />
-        </div>
-
-        {/* Command */}
-        <div style={makeEntryStyle(cmdSpring)}>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              background: palette.subtle,
-              border: `1px solid ${palette.line}`,
-              borderRadius: 6,
-              padding: "8px 12px",
-              fontFamily: monoFont,
-              fontSize: 18,
-              color: palette.ink,
+              background: "#1a1816",
+              borderRadius: 10,
+              borderTop: `2px solid ${palette.accent}`,
+              padding: "28px 48px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "flex-start",
+              gap: 4,
+              minWidth: 680,
+              boxShadow: "0 8px 40px rgba(0,0,0,0.18), 0 0 0 1px rgba(0,0,0,0.12)",
             }}
           >
-            npx nextjs-claw my-app
+            {/* Terminal prompt line */}
+            <div
+              style={{
+                fontFamily: monoFont,
+                fontSize: 22,
+                color: "rgba(250,247,242,0.4)",
+                fontWeight: 400,
+                letterSpacing: 0,
+              }}
+            >
+              $
+            </div>
+            {/* Main command — massive */}
+            <div
+              style={{
+                fontFamily: monoFont,
+                fontSize: 38,
+                fontWeight: 500,
+                color: "#faf7f2",
+                letterSpacing: -0.5,
+                lineHeight: 1.2,
+              }}
+            >
+              npx nextjs-claw my-app
+            </div>
           </div>
         </div>
 
@@ -144,16 +172,19 @@ export const Outro: React.FC = () => {
         <div style={makeEntryStyle(urlSpring, 10)}>
           <div
             style={{
-              fontSize: 14,
+              fontSize: 18,
               color: palette.muted,
               fontFamily: interFont,
               textDecoration: "underline",
+              textDecorationColor: `${palette.muted}66`,
             }}
           >
             github.com/dennisonbertram/nextjs-claw
           </div>
         </div>
       </div>
+
+      <Grain />
     </AbsoluteFill>
   );
 };
