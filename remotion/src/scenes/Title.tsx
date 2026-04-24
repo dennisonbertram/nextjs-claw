@@ -4,11 +4,11 @@ import {
   useVideoConfig,
   spring,
   interpolate,
-  Easing,
   AbsoluteFill,
 } from "remotion";
 import { palette } from "../palette";
 import { InfiniteLogo } from "../components/InfiniteLogo";
+import { Grain } from "../components/Grain";
 import { loadFont as loadInter } from "@remotion/google-fonts/Inter";
 
 const { fontFamily: interFont } = loadInter("normal", {
@@ -45,6 +45,7 @@ function CharReveal({
         alignItems: "baseline",
         flexWrap: "wrap",
         justifyContent: "center",
+        overflow: "visible",
       }}
     >
       {chars.map((char, i) => {
@@ -75,6 +76,7 @@ function CharReveal({
               transform: `scale(${charScale})`,
               opacity: charOpacity,
               whiteSpace: char === " " ? "pre" : "normal",
+              overflow: "visible",
             }}
           >
             {char}
@@ -85,11 +87,11 @@ function CharReveal({
   );
 }
 
-// Scene 1: Title — 45 frames (1.5s)
+// Scene 1: Title — 60 frames (2s) — breathe, let "the infinite app" register
 // Frame 0-10: logo springs in (scale 0→1, rotate -15°→0°)
-// Frame 10-30: title chars pop in (stagger 1f each)
-// Frame 28-38: subtitle chars pop in
-// Frame 35-45: fade out
+// Frame 8-30: title chars pop in (stagger 0.4f/char — was 1f/char, fixed clipping)
+// Frame 26-42: subtitle chars pop in
+// Frame 50-60: fade out
 export const Title: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -107,13 +109,13 @@ export const Title: React.FC = () => {
   const logoRotate = interpolate(logoSpring, [0, 1], [-15, 0]);
 
   // Overall fade out at end
-  const totalOpacity = interpolate(frame, [36, 45], [1, 0], {
+  const totalOpacity = interpolate(frame, [50, 60], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
   // Subtle rotating background gradient
-  const bgRotation = interpolate(frame, [0, 45], [0, 8], {
+  const bgRotation = interpolate(frame, [0, 60], [0, 8], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -128,6 +130,7 @@ export const Title: React.FC = () => {
         flexDirection: "column",
         gap: 28,
         opacity: totalOpacity,
+        overflow: "visible",
       }}
     >
       {/* Logo with spring + rotation */}
@@ -146,26 +149,30 @@ export const Title: React.FC = () => {
           flexDirection: "column",
           alignItems: "center",
           gap: 10,
+          overflow: "visible",
         }}
       >
+        {/* Reduced stagger from 1f to 0.4f/char — fixes "the infinit..." clipping */}
         <CharReveal
           text="the infinite app"
-          startFrame={10}
-          staggerFrames={1}
-          fontSize={48}
+          startFrame={8}
+          staggerFrames={0.4}
+          fontSize={56}
           fontWeight={600}
           color={palette.ink}
           letterSpacing={-1}
         />
         <CharReveal
           text="a Next.js starter that builds itself"
-          startFrame={26}
-          staggerFrames={0.7}
-          fontSize={18}
+          startFrame={22}
+          staggerFrames={0.4}
+          fontSize={22}
           fontWeight={400}
           color={palette.muted}
         />
       </div>
+
+      <Grain />
     </AbsoluteFill>
   );
 };

@@ -7,6 +7,7 @@ import {
 } from "remotion";
 import { palette } from "../palette";
 import { TemplateCard } from "../components/TemplateCard";
+import { Grain } from "../components/Grain";
 import { loadFont as loadInter } from "@remotion/google-fonts/Inter";
 import { loadFont as loadJetBrains } from "@remotion/google-fonts/JetBrainsMono";
 
@@ -31,7 +32,7 @@ const TEMPLATES_POPULAR = [
 
 const USER_TEXT = "Build me a SaaS landing page.";
 
-// Scene 3: TemplatePick — 45 frames (1.5s)
+// Scene 3: TemplatePick — 60 frames (2s)
 // Hover: 0-10f  Click feedback: 10-20f  Bubble snaps in at 20f  Grid fades at 25f
 
 export const TemplatePick: React.FC = () => {
@@ -62,14 +63,14 @@ export const TemplatePick: React.FC = () => {
 
   // Typewriter: fast, 20 chars in 20 frames = almost instant
   const charsToShow = Math.floor(
-    interpolate(frame, [22, 40], [0, USER_TEXT.length], {
+    interpolate(frame, [22, 45], [0, USER_TEXT.length], {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
     })
   );
 
   // Template grid fades out as user bubble appears
-  const gridOpacity = interpolate(frame, [25, 38], [1, 0.15], {
+  const gridOpacity = interpolate(frame, [25, 40], [1, 0.15], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -85,7 +86,7 @@ export const TemplatePick: React.FC = () => {
           overflow: "hidden",
         }}
       >
-        {/* Preview area */}
+        {/* Preview area — macOS window frame */}
         <div
           style={{
             flex: 1,
@@ -93,12 +94,16 @@ export const TemplatePick: React.FC = () => {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            borderRadius: 12,
+            border: "1px solid #E5E5E5",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.04), 6px 0 24px rgba(0,0,0,0.04)",
+            margin: "12px 0 12px 12px",
           }}
         >
           <div style={{ maxWidth: 800, textAlign: "center", padding: "0 40px" }}>
             <div
               style={{
-                fontSize: 36,
+                fontSize: 40,
                 fontWeight: 600,
                 color: palette.previewFg,
                 fontFamily: interFont,
@@ -110,7 +115,7 @@ export const TemplatePick: React.FC = () => {
             </div>
             <div
               style={{
-                fontSize: 24,
+                fontSize: 26,
                 fontWeight: 400,
                 color: "rgba(245,245,245,0.6)",
                 fontFamily: interFont,
@@ -121,23 +126,26 @@ export const TemplatePick: React.FC = () => {
           </div>
         </div>
 
-        {/* Chat panel */}
+        {/* Chat panel — with depth shadow */}
         <div
           style={{
-            width: 420,
-            minWidth: 420,
+            width: 480,
+            minWidth: 480,
             height: "100%",
             background: palette.panel,
-            borderLeft: `1px solid ${palette.line}`,
+            borderLeft: "1px solid rgba(0,0,0,0.08)",
+            boxShadow: "-10px 0px 30px rgba(0,0,0,0.05)",
             display: "flex",
             flexDirection: "column",
+            zIndex: 10,
+            position: "relative",
           }}
         >
           {/* Header */}
           <header
             style={{
               flexShrink: 0,
-              padding: "14px 16px 0",
+              padding: "18px 20px 0",
               borderBottom: `1px solid ${palette.line}`,
             }}
           >
@@ -146,18 +154,18 @@ export const TemplatePick: React.FC = () => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: 12,
+                marginBottom: 14,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div
                   style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 5,
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
                     background: palette.accent,
                     color: "#fff",
-                    fontSize: 12,
+                    fontSize: 15,
                     fontWeight: 700,
                     display: "flex",
                     alignItems: "center",
@@ -170,9 +178,9 @@ export const TemplatePick: React.FC = () => {
                 <div>
                   <div
                     style={{
-                      fontSize: 13,
+                      fontSize: 18,
                       fontWeight: 600,
-                      letterSpacing: -0.1,
+                      letterSpacing: -0.2,
                       color: palette.ink,
                       fontFamily: interFont,
                     }}
@@ -181,10 +189,10 @@ export const TemplatePick: React.FC = () => {
                   </div>
                   <div
                     style={{
-                      fontSize: 10,
+                      fontSize: 13,
                       color: palette.muted,
                       fontFamily: monoFont,
-                      marginTop: 1,
+                      marginTop: 2,
                     }}
                   >
                     claude-opus-4-7 · idle
@@ -198,31 +206,31 @@ export const TemplatePick: React.FC = () => {
           <div
             style={{
               flex: 1,
-              padding: "12px 16px",
+              padding: "14px 20px",
               overflow: "hidden",
               display: "flex",
               flexDirection: "column",
-              gap: 12,
+              gap: 14,
             }}
           >
             {/* Template grid */}
             <div style={{ opacity: gridOpacity }}>
-              <div style={{ marginBottom: 4 }}>
-                <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: palette.ink, fontFamily: interFont }}>
+              <div style={{ marginBottom: 6 }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: palette.ink, fontFamily: interFont }}>
                   Start with a template
                 </h3>
               </div>
-              <p style={{ marginTop: 0, marginBottom: 8, fontSize: 12, color: palette.muted, fontFamily: interFont }}>
+              <p style={{ marginTop: 0, marginBottom: 10, fontSize: 14, color: palette.muted, fontFamily: interFont }}>
                 Pick one, or describe your own below.
               </p>
-              <div style={{ marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 4 }}>
+              <div style={{ marginBottom: 12, display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {["Popular", "All", "Marketing"].map((label, i) => (
                   <div
                     key={label}
                     style={{
                       borderRadius: 999,
-                      padding: "2px 10px",
-                      fontSize: 11,
+                      padding: "3px 12px",
+                      fontSize: 13,
                       fontFamily: monoFont,
                       background: i === 0 ? palette.accentSoft : "none",
                       color: i === 0 ? palette.accent : palette.muted,
@@ -233,7 +241,7 @@ export const TemplatePick: React.FC = () => {
                   </div>
                 ))}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 {TEMPLATES_POPULAR.map((t, i) => (
                   <TemplateCard
                     key={t.slug}
@@ -247,7 +255,7 @@ export const TemplatePick: React.FC = () => {
               </div>
             </div>
 
-            {/* User bubble */}
+            {/* User bubble — bigger, warm dark gray #1A1918 */}
             {frame >= 20 && (
               <div
                 style={{
@@ -258,13 +266,13 @@ export const TemplatePick: React.FC = () => {
               >
                 <div
                   style={{
-                    background: palette.ink,
+                    background: "#1A1918",
                     color: palette.bg,
-                    padding: "9px 13px",
-                    borderRadius: 14,
+                    padding: "12px 16px",
+                    borderRadius: 16,
                     borderBottomRightRadius: 4,
                     maxWidth: "88%",
-                    fontSize: 13,
+                    fontSize: 20,
                     fontFamily: interFont,
                     lineHeight: 1.4,
                   }}
@@ -282,7 +290,7 @@ export const TemplatePick: React.FC = () => {
           <div
             style={{
               flexShrink: 0,
-              padding: "8px 12px",
+              padding: "10px 14px",
               borderTop: `1px solid ${palette.line}`,
             }}
           >
@@ -291,21 +299,21 @@ export const TemplatePick: React.FC = () => {
                 background: palette.bg,
                 border: `1px solid ${palette.line}`,
                 borderRadius: 8,
-                padding: "8px 12px",
+                padding: "10px 14px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
                 gap: 8,
-                minHeight: 44,
+                minHeight: 48,
               }}
             >
-              <span style={{ fontSize: 12, color: palette.muted, fontFamily: interFont, flex: 1 }}>
+              <span style={{ fontSize: 15, color: palette.muted, fontFamily: interFont, flex: 1 }}>
                 Describe what to build...
               </span>
               <div
                 style={{
-                  width: 28,
-                  height: 28,
+                  width: 32,
+                  height: 32,
                   borderRadius: 6,
                   background: palette.accent,
                   display: "flex",
@@ -314,7 +322,7 @@ export const TemplatePick: React.FC = () => {
                   flexShrink: 0,
                 }}
               >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="1.5">
+                <svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="1.5">
                   <path d="M6 2v8M2 6l4-4 4 4" />
                 </svg>
               </div>
@@ -322,6 +330,7 @@ export const TemplatePick: React.FC = () => {
           </div>
         </div>
       </div>
+      <Grain />
     </AbsoluteFill>
   );
 };

@@ -4,11 +4,11 @@ import {
   useVideoConfig,
   spring,
   interpolate,
-  Easing,
   AbsoluteFill,
 } from "remotion";
 import { palette } from "../palette";
 import { TemplateCard } from "../components/TemplateCard";
+import { Grain } from "../components/Grain";
 import { loadFont as loadInter } from "@remotion/google-fonts/Inter";
 import { loadFont as loadJetBrains } from "@remotion/google-fonts/JetBrainsMono";
 
@@ -31,7 +31,7 @@ const TEMPLATES_POPULAR = [
   { slug: "09-restaurant-local", name: "Restaurant" },
 ];
 
-// Scene 2: ShellReveal — 45 frames (1.5s)
+// Scene 2: ShellReveal — 60 frames (2s) — preview + panel compose cleanly, less rushed
 // Both slide in simultaneously over 20f with parallax
 // Cards stagger in 8-10 frames apart
 export const ShellReveal: React.FC = () => {
@@ -71,7 +71,7 @@ export const ShellReveal: React.FC = () => {
   });
 
   // Background pulse
-  const bgRotation = interpolate(frame, [0, 45], [0, 5], {
+  const bgRotation = interpolate(frame, [0, 60], [0, 5], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -91,7 +91,7 @@ export const ShellReveal: React.FC = () => {
           overflow: "hidden",
         }}
       >
-        {/* Preview area (light paper) */}
+        {/* Preview area — macOS window frame */}
         <div
           style={{
             flex: 1,
@@ -103,6 +103,10 @@ export const ShellReveal: React.FC = () => {
             alignItems: "center",
             justifyContent: "center",
             position: "relative",
+            borderRadius: 12,
+            border: "1px solid #E5E5E5",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.04), 6px 0 24px rgba(0,0,0,0.04)",
+            margin: "12px 0 12px 12px",
           }}
         >
           {/* Centered placeholder */}
@@ -113,18 +117,19 @@ export const ShellReveal: React.FC = () => {
               padding: "0 48px",
             }}
           >
-            {/* Dashed placeholder box */}
+            {/* Dashed placeholder box — with pulsing glow */}
             <div
               style={{
                 border: `1.5px dashed ${palette.line}`,
                 borderRadius: 12,
                 padding: "48px 32px",
                 marginBottom: 24,
+                boxShadow: `0 0 40px rgba(194, 65, 12, 0.08)`,
               }}
             >
               <div
                 style={{
-                  fontSize: 32,
+                  fontSize: 36,
                   fontWeight: 600,
                   color: palette.ink,
                   fontFamily: interFont,
@@ -136,7 +141,7 @@ export const ShellReveal: React.FC = () => {
               </div>
               <div
                 style={{
-                  fontSize: 18,
+                  fontSize: 22,
                   fontWeight: 400,
                   color: palette.muted,
                   fontFamily: interFont,
@@ -148,26 +153,29 @@ export const ShellReveal: React.FC = () => {
           </div>
         </div>
 
-        {/* Chat panel (cream) */}
+        {/* Chat panel (cream) — with left-edge depth shadow */}
         <div
           style={{
-            width: 420,
-            minWidth: 420,
+            width: 480,
+            minWidth: 480,
             height: "100%",
             background: palette.panel,
-            borderLeft: `1px solid ${palette.line}`,
+            borderLeft: "1px solid rgba(0,0,0,0.08)",
+            boxShadow: "-10px 0px 30px rgba(0,0,0,0.05)",
             transform: `translateX(${panelX}px) scale(${panelScale})`,
             transformOrigin: "right center",
             opacity: panelOpacity,
             display: "flex",
             flexDirection: "column",
+            zIndex: 10,
+            position: "relative",
           }}
         >
           {/* Header */}
           <header
             style={{
               flexShrink: 0,
-              padding: "14px 16px 0",
+              padding: "18px 20px 0",
               borderBottom: `1px solid ${palette.line}`,
             }}
           >
@@ -176,18 +184,18 @@ export const ShellReveal: React.FC = () => {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                marginBottom: 12,
+                marginBottom: 14,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div
                   style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 5,
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
                     background: palette.accent,
                     color: "#fff",
-                    fontSize: 12,
+                    fontSize: 15,
                     fontWeight: 700,
                     display: "flex",
                     alignItems: "center",
@@ -200,9 +208,9 @@ export const ShellReveal: React.FC = () => {
                 <div>
                   <div
                     style={{
-                      fontSize: 13,
+                      fontSize: 18,
                       fontWeight: 600,
-                      letterSpacing: -0.1,
+                      letterSpacing: -0.2,
                       color: palette.ink,
                       fontFamily: interFont,
                     }}
@@ -211,10 +219,10 @@ export const ShellReveal: React.FC = () => {
                   </div>
                   <div
                     style={{
-                      fontSize: 10,
+                      fontSize: 13,
                       color: palette.muted,
                       fontFamily: monoFont,
-                      marginTop: 1,
+                      marginTop: 2,
                     }}
                   >
                     claude-opus-4-7 · idle
@@ -225,23 +233,23 @@ export const ShellReveal: React.FC = () => {
           </header>
 
           {/* Template picker with staggered cards */}
-          <div style={{ flex: 1, padding: "12px 16px", overflow: "hidden" }}>
-            <div style={{ marginBottom: 4 }}>
-              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: palette.ink, fontFamily: interFont }}>
+          <div style={{ flex: 1, padding: "14px 20px", overflow: "hidden" }}>
+            <div style={{ marginBottom: 6 }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 600, color: palette.ink, fontFamily: interFont }}>
                 Start with a template
               </h3>
             </div>
-            <p style={{ marginTop: 0, marginBottom: 8, fontSize: 12, color: palette.muted, fontFamily: interFont }}>
+            <p style={{ marginTop: 0, marginBottom: 10, fontSize: 14, color: palette.muted, fontFamily: interFont }}>
               Pick one, or describe your own below.
             </p>
-            <div style={{ marginBottom: 10, display: "flex", flexWrap: "wrap", gap: 4 }}>
+            <div style={{ marginBottom: 12, display: "flex", flexWrap: "wrap", gap: 6 }}>
               {["Popular", "All", "Marketing", "Portfolio"].map((label, i) => (
                 <div
                   key={label}
                   style={{
                     borderRadius: 999,
-                    padding: "2px 10px",
-                    fontSize: 11,
+                    padding: "3px 12px",
+                    fontSize: 13,
                     fontFamily: monoFont,
                     background: i === 0 ? palette.accentSoft : "none",
                     color: i === 0 ? palette.accent : palette.muted,
@@ -253,15 +261,14 @@ export const ShellReveal: React.FC = () => {
               ))}
             </div>
             {/* Staggered template cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {TEMPLATES_POPULAR.map((t, cardIdx) => {
                 // Each card staggers 5 frames apart, starts at frame 8
                 const cardStartFrame = 8 + cardIdx * 5;
                 const cardFrame = frame - cardStartFrame;
-                const { fps: videoFps } = { fps: 30 };
                 const cardSpring = spring({
                   frame: cardFrame,
-                  fps: videoFps,
+                  fps,
                   from: 0,
                   to: 1,
                   config: { damping: 16, stiffness: 160 },
@@ -288,6 +295,7 @@ export const ShellReveal: React.FC = () => {
           </div>
         </div>
       </div>
+      <Grain />
     </AbsoluteFill>
   );
 };

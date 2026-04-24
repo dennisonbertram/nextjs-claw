@@ -7,35 +7,35 @@ import { AgentWorks } from "./scenes/AgentWorks";
 import { SnapShowcase } from "./scenes/SnapShowcase";
 import { Outro } from "./scenes/Outro";
 
-// Compressed 15-second storyboard at 30fps
-// Scene 1: Title        0:00–0:01.5  → 45 frames
-// Scene 2: ShellReveal  0:01.5–0:03  → 45 frames
-// Scene 3: TemplatePick 0:03–0:04.5  → 45 frames
-// Scene 4: AgentWorks   0:04.5–0:09.5 → 150 frames
-// Scene 5: SnapShowcase 0:09.5–0:12.5 → 90 frames
-// Scene 6: Outro        0:12.5–0:15  → 75 frames
-// Total: 450 frames = 15s
+// v2 pacing — Gemini review fixes
+// Scene 1: Title        0:00–0:02  → 60 frames  (was 45)
+// Scene 2: ShellReveal  0:02–0:04  → 60 frames  (was 45)
+// Scene 3: TemplatePick 0:04–0:06  → 60 frames  (was 45)
+// Scene 4: AgentWorks   0:06–0:09  → 90 frames  (was 150 — faster chips, wipe reveal)
+// Scene 5: ResultScene  0:09–0:12  → 90 frames  (was SnapShowcase — scroll payoff)
+// Scene 6: Outro        0:12–0:15  → 90 frames  (was 75 — massive CTA, hold full 3s)
+// Total: 450 frames = 15s @ 30fps
 
 export const Demo: React.FC = () => {
   return (
     <AbsoluteFill>
       <Series>
-        <Series.Sequence durationInFrames={45}>
+        <Series.Sequence durationInFrames={60}>
           <Title />
         </Series.Sequence>
-        <Series.Sequence durationInFrames={45}>
+        <Series.Sequence durationInFrames={60}>
           <ShellReveal />
         </Series.Sequence>
-        <Series.Sequence durationInFrames={45}>
+        <Series.Sequence durationInFrames={60}>
           <TemplatePick />
         </Series.Sequence>
-        <Series.Sequence durationInFrames={150}>
+        <Series.Sequence durationInFrames={90}>
           <AgentWorks />
         </Series.Sequence>
         <Series.Sequence durationInFrames={90}>
           <SnapShowcase />
         </Series.Sequence>
-        <Series.Sequence durationInFrames={75}>
+        <Series.Sequence durationInFrames={90}>
           <Outro />
         </Series.Sequence>
       </Series>
