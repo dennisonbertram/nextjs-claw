@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>the infinite app — a Next.js starter that builds itself</title>
+<meta name="description" content="Chat with Claude inside your running app. Point at elements. Watch your source code edit and hot-reload in real time. Runs locally, uses your Claude subscription, no API key required.">
+<meta property="og:title" content="the infinite app">
+<meta property="og:description" content="A Next.js starter that builds itself. Chat with Claude inside your running app.">
+<meta property="og:image" content="/hero.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23c2410c'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-family='system-ui,sans-serif' font-weight='700' font-size='22'%3E%u221E%3C/text%3E%3C/svg%3E">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  background: #faf7f2; color: #1a1816; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+a { color: inherit; text-decoration: none; }
+img { display: block; max-width: 100%; }
+
+:root {
+  --cream: #faf7f2; --ink: #1a1816; --muted: #6b6862;
+  --line: #e2dbc9; --subtle: #ece6d5;
+  --accent: #c2410c; --accent-soft: #fdf1e8;
+}
+
+/* Nav */
+nav {
+  position: sticky; top: 0; z-index: 20;
+  backdrop-filter: saturate(180%) blur(10px);
+  background: rgba(250, 247, 242, 0.82);
+  border-bottom: 1px solid var(--line);
+}
+.nav-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 24px;
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  font-weight: 600; font-size: 15px; letter-spacing: -0.2px;
+}
+.logo {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: var(--accent); color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 15px;
+}
+.nav-links { display: flex; gap: 26px; font-size: 14px; color: var(--muted); }
+.nav-links a:hover { color: var(--ink); }
+
+/* Hero */
+.hero {
+  max-width: 920px; margin: 0 auto;
+  padding: 84px 24px 36px; text-align: center;
+}
+.eyebrow {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px; color: var(--accent);
+  letter-spacing: 1.2px; text-transform: uppercase;
+  margin-bottom: 22px;
+}
+h1 {
+  font-size: clamp(38px, 7vw, 70px);
+  font-weight: 700; letter-spacing: -1.8px; line-height: 1.04;
+  margin-bottom: 26px;
+}
+h1 em { color: var(--accent); font-style: normal; }
+.tagline {
+  font-size: clamp(17px, 2.2vw, 20px);
+  color: var(--muted); max-width: 620px; margin: 0 auto 32px;
+}
+.tagline strong { color: var(--ink); font-weight: 500; }
+
+/* Install box */
+.install-wrap { display: flex; justify-content: center; margin-bottom: 18px; }
+.install {
+  display: inline-flex; align-items: center; gap: 10px;
+  background: var(--ink); color: var(--cream);
+  padding: 14px 22px; border-radius: 10px;
+  border-top: 2px solid var(--accent);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 15px; font-weight: 500;
+  box-shadow: 0 6px 24px rgba(194, 65, 12, 0.12);
+  cursor: pointer; transition: transform 160ms;
+  position: relative;
+}
+.install:hover { transform: translateY(-1px); }
+.install::before { content: "$"; color: #7a756d; }
+.install .copy-hint {
+  position: absolute; top: -30px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px; padding: 4px 10px;
+  background: #1a1816; color: #faf7f2;
+  border-radius: 4px; border-top: 1.5px solid var(--accent);
+  opacity: 0; pointer-events: none; transition: opacity 180ms;
+}
+.install.copied .copy-hint { opacity: 1; }
+
+/* Value pills */
+.pills {
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+  margin-bottom: 52px;
+}
+.pill {
+  padding: 5px 12px; border-radius: 999px;
+  border: 1px solid rgba(194, 65, 12, 0.3);
+  background: var(--accent-soft); color: #8a2d07;
+  font-size: 12px; font-weight: 500;
+}
+
+/* Hero image */
+.hero-img-wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+.hero-img {
+  width: 100%; height: auto;
+  border-radius: 14px; border: 1px solid var(--line);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.08);
+}
+
+/* Section */
+section { padding: 88px 24px; max-width: 1100px; margin: 0 auto; }
+.section-head { max-width: 720px; margin-bottom: 48px; }
+.section-eyebrow {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11px; color: var(--accent);
+  letter-spacing: 1.5px; text-transform: uppercase;
+  margin-bottom: 14px;
+}
+.section-title {
+  font-size: clamp(28px, 4.6vw, 44px);
+  font-weight: 600; letter-spacing: -1px;
+  line-height: 1.12; margin-bottom: 18px;
+}
+.section-lede { font-size: 17px; color: var(--muted); max-width: 600px; }
+
+/* Steps (how it works) */
+.steps {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 32px;
+}
+.step { position: relative; }
+.step-num {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 12px; color: var(--accent);
+  letter-spacing: 1px; margin-bottom: 12px;
+}
+.step-title {
+  font-size: 19px; font-weight: 600; letter-spacing: -0.3px;
+  margin-bottom: 8px;
+}
+.step-desc { color: var(--muted); font-size: 15px; }
+
+/* Feature grid */
+.features {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+.feature {
+  padding: 26px;
+  background: white; border: 1px solid var(--line);
+  border-radius: 12px; transition: border-color 180ms;
+}
+.feature:hover { border-color: rgba(194, 65, 12, 0.35); }
+.feature-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 38px; height: 38px;
+  background: var(--accent-soft); color: var(--accent);
+  border-radius: 9px;
+  font-size: 16px; font-weight: 600;
+  margin-bottom: 18px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+.feature h3 {
+  font-size: 16px; font-weight: 600; letter-spacing: -0.2px;
+  margin-bottom: 6px;
+}
+.feature p { color: var(--muted); font-size: 14px; }
+
+/* Templates gallery */
+.template-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.template {
+  position: relative; aspect-ratio: 5/3; overflow: hidden;
+  border-radius: 10px; border: 1px solid var(--line);
+  background: var(--subtle);
+}
+.template img {
+  width: 100%; height: 100%; object-fit: cover; object-position: top;
+  transition: transform 300ms;
+}
+.template:hover img { transform: scale(1.03); }
+.template-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 50%);
+  padding: 14px;
+  display: flex; align-items: flex-end;
+}
+.template-label {
+  color: white; font-size: 13px; font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
+
+/* Terminal-style "story" block */
+.story {
+  background: #1a1816; color: var(--cream);
+  border-radius: 14px;
+  padding: 48px; margin: 32px 0;
+  border-top: 3px solid var(--accent);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 14px; line-height: 1.8;
+}
+.story .prompt { color: #7a756d; }
+.story .user { color: var(--cream); margin-bottom: 18px; }
+.story .chip {
+  display: inline-block;
+  padding: 2px 10px; border-radius: 4px; font-size: 12px;
+  margin-right: 8px; margin-bottom: 8px;
+  border: 1px solid rgba(194, 65, 12, 0.35);
+  background: rgba(194, 65, 12, 0.1);
+  color: #f5d9c9;
+}
+.story .chip.ok {
+  border-color: rgba(34, 197, 94, 0.4);
+  background: rgba(34, 197, 94, 0.1);
+  color: #a7f3d0;
+}
+.story .result { color: #a7f3d0; margin-top: 18px; }
+
+/* CTA */
+.cta-section {
+  text-align: center;
+  background: var(--ink); color: var(--cream);
+  border-radius: 20px; padding: 72px 24px;
+  margin-bottom: 64px;
+  position: relative; overflow: hidden;
+}
+.cta-section::before {
+  content: ""; position: absolute; top: -80px; left: 50%;
+  transform: translateX(-50%);
+  width: 280px; height: 280px;
+  background: radial-gradient(circle, rgba(194, 65, 12, 0.4) 0%, transparent 60%);
+  filter: blur(30px); z-index: 0;
+}
+.cta-section > * { position: relative; z-index: 1; }
+.cta-section h2 {
+  font-size: clamp(32px, 5vw, 48px); font-weight: 600;
+  letter-spacing: -1px; margin-bottom: 18px;
+}
+.cta-section p { opacity: 0.75; margin-bottom: 32px; }
+.cta-section .install {
+  box-shadow: 0 0 0 1px rgba(250, 247, 242, 0.2);
+  background: rgba(250, 247, 242, 0.05);
+}
+.cta-section .install::before { color: rgba(250, 247, 242, 0.4); }
+.cta-links {
+  margin-top: 24px; display: flex; gap: 24px; justify-content: center;
+  font-size: 14px; opacity: 0.8;
+}
+.cta-links a:hover { opacity: 1; text-decoration: underline; }
+
+/* Footer */
+footer {
+  border-top: 1px solid var(--line);
+  padding: 32px 24px;
+  font-size: 13px; color: var(--muted);
+}
+.footer-inner {
+  max-width: 1100px; margin: 0 auto;
+  display: flex; flex-wrap: wrap; gap: 16px;
+  justify-content: space-between; align-items: center;
+}
+.footer-links { display: flex; gap: 20px; flex-wrap: wrap; }
+.footer-links a:hover { color: var(--ink); }
+
+@media (max-width: 640px) {
+  .nav-links { gap: 16px; font-size: 13px; }
+  .nav-links a:not(:last-child):not(:nth-last-child(2)) { display: none; }
+  .hero { padding: 56px 20px 28px; }
+  section { padding: 56px 20px; }
+  .story { padding: 28px 20px; font-size: 13px; }
+  .cta-section { padding: 52px 20px; }
+}
+</style>
+</head>
+<body>
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="brand">
+      <div class="logo">∞</div>
+      <span>the infinite app</span>
+    </a>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#templates">Templates</a>
+      <a href="https://github.com/dennisonbertram/nextjs-claw">GitHub ↗</a>
+      <a href="https://www.npmjs.com/package/nextjs-claw">npm ↗</a>
+    </div>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="eyebrow">nextjs-claw · v0.1.0 · MIT</div>
+  <h1>A Next.js starter that <em>builds itself.</em></h1>
+  <p class="tagline">
+    Chat with Claude inside your running app. Click an element, type what to change.
+    <strong>Your source updates and hot-reloads in real time.</strong>
+  </p>
+  <div class="install-wrap">
+    <button class="install" id="install-btn" aria-label="Copy install command">
+      npx nextjs-claw my-app
+      <span class="copy-hint">Copied!</span>
+    </button>
+  </div>
+  <div class="pills">
+    <span class="pill">runs locally</span>
+    <span class="pill">your Claude subscription</span>
+    <span class="pill">hot reload</span>
+    <span class="pill">no API key</span>
+  </div>
+</div>
+
+<div class="hero-img-wrap">
+  <img src="hero.png" alt="the infinite app — a dashboard on the left, a cream chat panel on the right showing a user prompt, a reference chip pointing at <p> TOTAL REVENUE, and green tool chips for grep and edit" class="hero-img" loading="eager">
+</div>
+
+<section id="how">
+  <div class="section-head">
+    <div class="section-eyebrow">How it works</div>
+    <h2 class="section-title">Describe what you want. Point at what's wrong.</h2>
+    <p class="section-lede">
+      The app runs on your laptop. The chat panel spawns the <code>claude</code> CLI as a subprocess — it uses your existing Claude subscription, so there's no API key to manage.
+    </p>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">01 / DESCRIBE</div>
+      <div class="step-title">Tell Claude what to build.</div>
+      <p class="step-desc">"Make a SaaS landing page." "Add a pricing tier." Claude reads your code, edits it, streams tool calls live in the chat.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">02 / POINT</div>
+      <div class="step-title">Click an element to edit it.</div>
+      <p class="step-desc">Activate pick mode, click anything in the preview. The tag, text, and Tailwind classes drop into your next message as a reference chip.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">03 / WATCH</div>
+      <div class="step-title">See the change instantly.</div>
+      <p class="step-desc">Next.js hot reload serves the edited source. No refresh. No build step. The app changes while you watch.</p>
+    </div>
+  </div>
+
+  <div class="story">
+    <div class="prompt">you</div>
+    <div class="user">Change "Overview" to "Claw Dashboard"</div>
+    <div>
+      <span class="chip ok">grep Overview ✓</span>
+      <span class="chip ok">read page.tsx ✓</span>
+      <span class="chip ok">edit page.tsx ✓</span>
+    </div>
+    <div class="result">→ Done. Line 85 now reads "Claw Dashboard".</div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="section-head">
+    <div class="section-eyebrow">What's inside</div>
+    <h2 class="section-title">Everything you need. Nothing you don't.</h2>
+  </div>
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">⌖</div>
+      <h3>Click-to-edit picker</h3>
+      <p>Hover any element, click to capture tag, text, and classes. Attached to your next message as a reference chip.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">▢</div>
+      <h3>4 snap states</h3>
+      <p>Rail, default, wide, fullscreen. Drag to resize — snaps to the nearest preset. Panel and preview never fight for space.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">⁂</div>
+      <h3>12 template recipes</h3>
+      <p>SaaS landings, dashboards, portfolios, docs, newsletters. Click one, watch Claude assemble it.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">⚒</div>
+      <h3>Stack cookbook</h3>
+      <p>Self-hosted Postgres, auth, email, background jobs, S3 uploads, Stripe. 15 opinionated recipes Claude follows on demand.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">◉</div>
+      <h3>Streaming tool chips</h3>
+      <p>Grep, Read, Edit, Write — every call streams as a mono-font chip with state-colored left border. Know exactly what Claude is doing.</p>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">☗</div>
+      <h3>Protected paths</h3>
+      <p>The agent's system prompt keeps it out of its own source. The chat UI can't edit itself — the app you build is yours alone.</p>
+    </div>
+  </div>
+</section>
+
+<section id="templates">
+  <div class="section-head">
+    <div class="section-eyebrow">Template library</div>
+    <h2 class="section-title">Ship a shape in one click.</h2>
+    <p class="section-lede">Twelve opinionated starter templates — Tailwind v4, React 19, real content — wait in the chat panel. Click one, Claude writes the page.</p>
+  </div>
+  <div class="template-grid">
+    <div class="template">
+      <img src="templates/saas.png" alt="SaaS Landing template preview">
+      <div class="template-overlay"><span class="template-label">SaaS Landing</span></div>
+    </div>
+    <div class="template">
+      <img src="templates/pricing.png" alt="Pricing Page template preview">
+      <div class="template-overlay"><span class="template-label">Pricing Page</span></div>
+    </div>
+    <div class="template">
+      <img src="templates/portfolio.png" alt="Dev Portfolio template preview">
+      <div class="template-overlay"><span class="template-label">Dev Portfolio</span></div>
+    </div>
+    <div class="template">
+      <img src="templates/dashboard.png" alt="Dashboard template preview">
+      <div class="template-overlay"><span class="template-label">Dashboard</span></div>
+    </div>
+    <div class="template">
+      <img src="templates/blog.png" alt="Editorial Blog template preview">
+      <div class="template-overlay"><span class="template-label">Editorial Blog</span></div>
+    </div>
+    <div class="template">
+      <img src="templates/docs.png" alt="Docs Site template preview">
+      <div class="template-overlay"><span class="template-label">Docs Site</span></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="cta-section">
+    <h2>Run it now.</h2>
+    <p>Takes 30 seconds if you have Bun and Claude Code installed.</p>
+    <div class="install-wrap">
+      <button class="install" onclick="copyInstall()" aria-label="Copy install command">
+        npx nextjs-claw my-app
+        <span class="copy-hint">Copied!</span>
+      </button>
+    </div>
+    <div class="cta-links">
+      <a href="https://github.com/dennisonbertram/nextjs-claw">GitHub ↗</a>
+      <a href="https://www.npmjs.com/package/nextjs-claw">npm ↗</a>
+      <a href="https://github.com/dennisonbertram/nextjs-claw#readme">Docs ↗</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div>© 2026 Dennison Bertram · MIT License</div>
+    <div class="footer-links">
+      <a href="https://github.com/dennisonbertram/nextjs-claw">GitHub</a>
+      <a href="https://www.npmjs.com/package/nextjs-claw">npm</a>
+      <a href="https://github.com/dennisonbertram/nextjs-claw/issues">Issues</a>
+      <a href="https://github.com/dennisonbertram/nextjs-claw/blob/main/LICENSE">License</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+function copyInstall() {
+  const text = "npx nextjs-claw my-app";
+  navigator.clipboard.writeText(text).catch(() => {});
+  document.querySelectorAll(".install").forEach(btn => {
+    btn.classList.add("copied");
+    setTimeout(() => btn.classList.remove("copied"), 1400);
+  });
+}
+document.getElementById("install-btn")?.addEventListener("click", copyInstall);
+</script>
+</body>
+</html>
