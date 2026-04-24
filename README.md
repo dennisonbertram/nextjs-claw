@@ -1,6 +1,6 @@
 # nextjs-claw
 
-![demo](./docs/demo/nextjs-claw-demo.gif)
+<video src="./docs/demo/nextjs-claw-demo.webm" autoplay loop muted playsinline></video>
 
 ![nextjs-claw](./banner.png)
 
