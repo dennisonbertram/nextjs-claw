@@ -1,8 +1,6 @@
 # nextjs-claw
 
-<video src="./docs/demo/nextjs-claw-demo.webm" autoplay loop muted playsinline></video>
-
-![nextjs-claw](./banner.png)
+![nextjs-claw — a Next.js starter that builds itself](./docs/demo/hero.png)
 
 [![npm version](https://img.shields.io/npm/v/nextjs-claw)](https://www.npmjs.com/package/nextjs-claw)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
