@@ -4,12 +4,12 @@ import {
   useVideoConfig,
   spring,
   interpolate,
-  Easing,
   AbsoluteFill,
   Img,
   staticFile,
 } from "remotion";
 import { palette } from "../palette";
+import { Grain } from "../components/Grain";
 import { loadFont as loadInter } from "@remotion/google-fonts/Inter";
 import { loadFont as loadJetBrains } from "@remotion/google-fonts/JetBrainsMono";
 
@@ -23,206 +23,54 @@ const { fontFamily: monoFont } = loadJetBrains("normal", {
   subsets: ["latin"],
 });
 
-// Scene 5: SnapShowcase — 90 frames (3s)
-// default(420) → wide(620) at frame 15  hold 15f
-// wide(620) → rail(56) at frame 30      hold 20f
-// rail(56) → default(420) at frame 50  hold 40f
-// Elastic spring for each transition
+// Scene 5: Result Showcase — 90 frames (3s)
+// The "look what we built" payoff moment
+// Left: Ghost landing fills the frame, gentle vertical scroll animation (translateY 0→-200px over 60f)
+// Right: Claude's summary text fades in
+// No snap states — focus is the ask
 
-interface SnapTransitionProps {
-  from: number;
-  to: number;
-  startFrame: number;
-  currentFrame: number;
-  fps: number;
-}
-
-function getSnapWidth({
-  from,
-  to,
-  startFrame,
-  currentFrame,
-  fps,
-}: SnapTransitionProps): number {
-  const springVal = spring({
-    frame: currentFrame - startFrame,
-    fps,
-    from,
-    to,
-    config: { damping: 10, stiffness: 140, mass: 0.8 },
-    durationInFrames: 16,
-  });
-  return springVal;
-}
-
-const RailPanel: React.FC = () => (
-  <div
-    style={{
-      width: "100%",
-      height: "100%",
-      background: palette.panel,
-      borderLeft: `1px solid ${palette.line}`,
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      paddingTop: 14,
-      gap: 16,
-    }}
-  >
-    <div
-      style={{
-        width: 34,
-        height: 34,
-        borderRadius: 7,
-        background: palette.accent,
-        color: "#fff",
-        fontSize: 16,
-        fontWeight: 700,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: interFont,
-      }}
-    >
-      ∞
-    </div>
-    {[0, 1, 2].map((i) => (
-      <div
-        key={i}
-        style={{
-          width: 22,
-          height: 22,
-          borderRadius: 4,
-          background: palette.subtle,
-          border: `1px solid ${palette.line}`,
-        }}
-      />
-    ))}
-  </div>
-);
-
-const FullPanel: React.FC = () => (
-  <div
-    style={{
-      width: "100%",
-      height: "100%",
-      background: palette.panel,
-      borderLeft: `1px solid ${palette.line}`,
-      display: "flex",
-      flexDirection: "column",
-    }}
-  >
-    <header
-      style={{
-        flexShrink: 0,
-        padding: "14px 16px 0",
-        borderBottom: `1px solid ${palette.line}`,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          marginBottom: 12,
-        }}
-      >
-        <div
-          style={{
-            width: 22,
-            height: 22,
-            borderRadius: 5,
-            background: palette.accent,
-            color: "#fff",
-            fontSize: 12,
-            fontWeight: 700,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontFamily: interFont,
-          }}
-        >
-          ∞
-        </div>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: palette.ink, fontFamily: interFont }}>
-            the infinite app
-          </div>
-          <div style={{ fontSize: 10, color: palette.muted, fontFamily: monoFont, marginTop: 1 }}>
-            claude-opus-4-7 · idle
-          </div>
-        </div>
-      </div>
-    </header>
-    <div style={{ flex: 1, padding: "12px 16px" }}>
-      <div
-        style={{
-          background: palette.subtle,
-          borderRadius: 6,
-          border: `1px solid ${palette.line}`,
-          padding: "8px 10px",
-          fontSize: 12,
-          color: palette.muted,
-          fontFamily: interFont,
-        }}
-      >
-        Wrote the landing page — hero, features, pricing.
-      </div>
-    </div>
-  </div>
-);
+const SUMMARY_LINES = [
+  "Built your SaaS landing page.",
+  "• Hero with gradient headline",
+  "• Feature grid, 3-col",
+  "• Pricing section, 3 tiers",
+  "• CTA footer",
+];
 
 export const SnapShowcase: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Width transitions with elastic spring
-  // 0-15: hold default (420)
-  // 15-30: spring to wide (620)
-  // 30-50: hold wide
-  // 50-65: spring to rail (56)
-  // 65-75: hold rail
-  // 75-90: spring to default (420)
-
-  let panelWidth: number;
-
-  if (frame < 15) {
-    panelWidth = 420;
-  } else if (frame < 30) {
-    panelWidth = getSnapWidth({ from: 420, to: 620, startFrame: 15, currentFrame: frame, fps });
-  } else if (frame < 50) {
-    panelWidth = 620;
-  } else if (frame < 65) {
-    panelWidth = getSnapWidth({ from: 620, to: 56, startFrame: 50, currentFrame: frame, fps });
-  } else if (frame < 75) {
-    panelWidth = 56;
-  } else {
-    panelWidth = getSnapWidth({ from: 56, to: 420, startFrame: 75, currentFrame: frame, fps });
-  }
-
-  // Preview scale: subtle boost at rail (near full width)
-  const previewScale = interpolate(
-    panelWidth,
-    [56, 420, 620],
-    [1.012, 1.0, 0.996],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-  );
-
-  // Snap label
-  let snapLabel = "420 · default";
-  if (panelWidth > 500) snapLabel = `${Math.round(panelWidth)} · wide`;
-  else if (panelWidth < 100) snapLabel = `${Math.round(panelWidth)} · rail`;
-  else if (frame >= 75) snapLabel = `${Math.round(panelWidth)} · default`;
-
-  const labelOpacity = interpolate(frame, [0, 8], [0, 1], {
+  // Background slow rotation
+  const bgRotation = interpolate(frame, [0, 90], [0, 6], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  const isRail = panelWidth < 100;
+  // Left panel: gentle vertical scroll — translateY 0 → -200 over 60 frames
+  const scrollY = interpolate(frame, [0, 60], [0, -200], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+    easing: (t) => t * (2 - t), // ease out
+  });
 
-  // Background slow motion
-  const bgRotation = interpolate(frame, [0, 90], [0, 6], {
+  // Panel slides in from right
+  const panelSpring = spring({
+    frame,
+    fps,
+    from: 0,
+    to: 1,
+    config: { damping: 20, stiffness: 140 },
+    durationInFrames: 20,
+  });
+  const panelX = interpolate(panelSpring, [0, 1], [60, 0]);
+  const panelOpacity = interpolate(frame, [0, 10], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // Summary text lines stagger in starting frame 15
+  const summaryOpacity = interpolate(frame, [15, 28], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -243,20 +91,24 @@ export const SnapShowcase: React.FC = () => {
           position: "relative",
         }}
       >
-        {/* Preview area */}
+        {/* Preview area — Ghost landing with scroll */}
         <div
           style={{
             flex: 1,
             overflow: "hidden",
             position: "relative",
+            borderRadius: 12,
+            border: "1px solid #E5E5E5",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.04)",
+            margin: "12px 0 12px 12px",
           }}
         >
+          {/* Scrolling image — translateY creates scroll effect */}
           <div
             style={{
               width: "100%",
-              height: "100%",
-              transform: `scale(${previewScale})`,
-              transformOrigin: "center center",
+              height: "140%", // taller to allow scroll
+              transform: `translateY(${scrollY}px)`,
             }}
           >
             <Img
@@ -270,63 +122,247 @@ export const SnapShowcase: React.FC = () => {
             />
           </div>
 
-          {/* Snap label overlay */}
+          {/* "Just built" badge anchored to top of preview */}
           <div
             style={{
               position: "absolute",
-              top: 24,
-              left: 0,
-              right: 0,
+              top: 16,
+              left: 16,
+              background: "rgba(244,240,232,0.92)",
+              border: `1px solid ${palette.line}`,
+              borderRadius: 6,
+              padding: "6px 14px",
+              fontSize: 14,
+              fontWeight: 500,
+              color: palette.accent,
+              fontFamily: monoFont,
+              backdropFilter: "blur(4px)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            }}
+          >
+            ✓ Just built
+          </div>
+        </div>
+
+        {/* Chat panel — Claude's summary */}
+        <div
+          style={{
+            width: 480,
+            minWidth: 480,
+            height: "100%",
+            background: palette.panel,
+            borderLeft: "1px solid rgba(0,0,0,0.08)",
+            boxShadow: "-10px 0px 30px rgba(0,0,0,0.05)",
+            transform: `translateX(${panelX}px)`,
+            opacity: panelOpacity,
+            display: "flex",
+            flexDirection: "column",
+            zIndex: 10,
+            position: "relative",
+          }}
+        >
+          {/* Header */}
+          <header
+            style={{
+              flexShrink: 0,
+              padding: "18px 20px 0",
+              borderBottom: `1px solid ${palette.line}`,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 6,
+                  background: palette.accent,
+                  color: "#fff",
+                  fontSize: 15,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontFamily: interFont,
+                }}
+              >
+                ∞
+              </div>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 600, color: palette.ink, fontFamily: interFont }}>
+                  the infinite app
+                </div>
+                <div style={{ fontSize: 13, color: palette.muted, fontFamily: monoFont, marginTop: 2 }}>
+                  claude-opus-4-7 · idle
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* Messages */}
+          <div
+            style={{
+              flex: 1,
+              padding: "18px 20px",
+              overflow: "hidden",
               display: "flex",
               flexDirection: "column",
-              alignItems: "center",
-              gap: 6,
-              opacity: labelOpacity,
+              gap: 16,
+            }}
+          >
+            {/* User message */}
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <div
+                style={{
+                  background: "#1A1918",
+                  color: palette.bg,
+                  padding: "12px 16px",
+                  borderRadius: 16,
+                  borderBottomRightRadius: 4,
+                  maxWidth: "88%",
+                  fontSize: 20,
+                  fontFamily: interFont,
+                  lineHeight: 1.4,
+                }}
+              >
+                Build me a SaaS landing page.
+              </div>
+            </div>
+
+            {/* Previous tool chips (already done) */}
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 6,
+                  background: palette.accent,
+                  color: "#fff",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontFamily: interFont,
+                  flexShrink: 0,
+                  marginTop: 2,
+                }}
+              >
+                ∞
+              </div>
+
+              <div style={{ flex: 1 }}>
+                {/* Tool chips summary — all done */}
+                {["grep", "read", "edit"].map((tool) => (
+                  <div
+                    key={tool}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      background: palette.subtle,
+                      border: `1px solid ${palette.line}`,
+                      borderLeft: `3px solid ${palette.ok}`,
+                      padding: "6px 12px 6px 8px",
+                      borderRadius: 5,
+                      fontSize: 15,
+                      fontFamily: monoFont,
+                      marginBottom: 8,
+                      width: "fit-content",
+                    }}
+                  >
+                    <span style={{ color: palette.ok, fontWeight: 600 }}>{tool}</span>
+                    <span style={{ color: palette.ok, fontSize: 13 }}>✓</span>
+                  </div>
+                ))}
+
+                {/* Summary text */}
+                <div
+                  style={{
+                    opacity: summaryOpacity,
+                    marginTop: 8,
+                  }}
+                >
+                  {SUMMARY_LINES.map((line, i) => {
+                    const lineOpacity = interpolate(
+                      frame,
+                      [15 + i * 5, 25 + i * 5],
+                      [0, 1],
+                      { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+                    );
+                    const lineY = interpolate(
+                      frame,
+                      [15 + i * 5, 25 + i * 5],
+                      [10, 0],
+                      { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+                    );
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          fontSize: i === 0 ? 20 : 17,
+                          fontWeight: i === 0 ? 600 : 400,
+                          color: palette.ink,
+                          fontFamily: interFont,
+                          lineHeight: 1.6,
+                          opacity: lineOpacity,
+                          transform: `translateY(${lineY}px)`,
+                          paddingLeft: i > 0 ? 8 : 0,
+                        }}
+                      >
+                        {line}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Composer */}
+          <div
+            style={{
+              flexShrink: 0,
+              padding: "10px 14px",
+              borderTop: `1px solid ${palette.line}`,
             }}
           >
             <div
               style={{
-                fontSize: 16,
-                fontWeight: 500,
-                color: palette.ink,
-                fontFamily: interFont,
-                background: "rgba(244,240,232,0.9)",
-                padding: "4px 14px",
-                borderRadius: 6,
+                background: palette.bg,
                 border: `1px solid ${palette.line}`,
+                borderRadius: 8,
+                padding: "10px 14px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 8,
+                minHeight: 48,
               }}
             >
-              Snap states
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: palette.muted,
-                fontFamily: monoFont,
-                background: "rgba(244,240,232,0.85)",
-                padding: "2px 10px",
-                borderRadius: 4,
-                border: `1px solid ${palette.line}`,
-              }}
-            >
-              {snapLabel}
+              <span style={{ fontSize: 15, color: palette.muted, fontFamily: interFont, flex: 1 }}>
+                What would you like to change?
+              </span>
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 6,
+                  background: palette.accent,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 12 12" fill="none" stroke="white" strokeWidth="1.5">
+                  <path d="M6 2v8M2 6l4-4 4 4" />
+                </svg>
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Chat panel — animating width */}
-        <div
-          style={{
-            width: panelWidth,
-            minWidth: panelWidth,
-            height: "100%",
-            overflow: "hidden",
-            flexShrink: 0,
-          }}
-        >
-          {isRail ? <RailPanel /> : <FullPanel />}
-        </div>
       </div>
+      <Grain />
     </AbsoluteFill>
   );
 };

@@ -34,9 +34,9 @@ export const ToolChip: React.FC<Props> = ({
         background: palette.subtle,
         border: `1px solid ${palette.line}`,
         borderLeft: `3px solid ${stateColor}`,
-        padding: "6px 10px 6px 8px",
+        padding: "8px 14px 8px 10px",
         borderRadius: 5,
-        fontSize: 11,
+        fontSize: 16,
         fontFamily: "'JetBrains Mono', 'Courier New', ui-monospace, monospace",
         width: "fit-content",
         maxWidth: "100%",
@@ -50,7 +50,7 @@ export const ToolChip: React.FC<Props> = ({
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
-            maxWidth: 200,
+            maxWidth: 260,
           }}
         >
           {target}
@@ -60,8 +60,8 @@ export const ToolChip: React.FC<Props> = ({
         <span
           style={{
             display: "inline-block",
-            width: 7,
-            height: 7,
+            width: 8,
+            height: 8,
             borderRadius: 999,
             background: palette.accent,
             opacity: pulseOpacity,
@@ -72,10 +72,10 @@ export const ToolChip: React.FC<Props> = ({
         />
       )}
       {state === "ok" && (
-        <span style={{ color: palette.ok, fontSize: 10 }}>✓</span>
+        <span style={{ color: palette.ok, fontSize: 14 }}>✓</span>
       )}
       {state === "err" && (
-        <span style={{ color: palette.err, fontSize: 10 }}>✕</span>
+        <span style={{ color: palette.err, fontSize: 14 }}>✕</span>
       )}
     </div>
   );
