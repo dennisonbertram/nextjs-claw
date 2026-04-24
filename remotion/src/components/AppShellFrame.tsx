@@ -1,23 +1,32 @@
 import React from "react";
 import { palette } from "../palette";
+import { loadFont as loadJetBrains } from "@remotion/google-fonts/JetBrainsMono";
+
+const { fontFamily: monoFont } = loadJetBrains("normal", {
+  weights: ["400", "500", "600"],
+  subsets: ["latin"],
+});
 
 interface Props {
   panelWidth: number;
+  showLiveDot?: boolean;
   children?: {
     preview?: React.ReactNode;
     panel?: React.ReactNode;
   };
 }
 
-// macOS-style window traffic lights
+// macOS-style window traffic lights — perfectly round, Safari chrome
 const WindowChrome: React.FC = () => (
   <div
     style={{
       position: "absolute",
-      top: 14,
+      top: 0,
       left: 16,
+      bottom: 0,
       display: "flex",
       gap: 7,
+      alignItems: "center",
       zIndex: 20,
     }}
   >
@@ -25,11 +34,12 @@ const WindowChrome: React.FC = () => (
       <div
         key={i}
         style={{
-          width: 13,
-          height: 13,
+          width: 12,
+          height: 12,
           borderRadius: 999,
           background: color,
           boxShadow: `inset 0 0 0 0.5px rgba(0,0,0,0.15)`,
+          flexShrink: 0,
         }}
       />
     ))}
@@ -38,6 +48,7 @@ const WindowChrome: React.FC = () => (
 
 export const AppShellFrame: React.FC<Props> = ({
   panelWidth,
+  showLiveDot = false,
   children,
 }) => {
   const totalWidth = 1920;
@@ -53,7 +64,7 @@ export const AppShellFrame: React.FC<Props> = ({
         background: palette.bg,
       }}
     >
-      {/* Preview area — macOS browser window frame for strong structural depth */}
+      {/* Preview area — macOS browser window frame */}
       <div
         style={{
           flex: 1,
@@ -67,7 +78,7 @@ export const AppShellFrame: React.FC<Props> = ({
           margin: "16px 0 16px 16px",
         }}
       >
-        {/* macOS window chrome bar */}
+        {/* macOS window chrome bar — Safari-style, cream-matched */}
         <div
           style={{
             position: "absolute",
@@ -75,7 +86,7 @@ export const AppShellFrame: React.FC<Props> = ({
             left: 0,
             right: 0,
             height: 40,
-            background: "rgba(248,246,242,0.95)",
+            background: "#f0eae0",
             borderBottom: "1px solid rgba(0,0,0,0.08)",
             display: "flex",
             alignItems: "center",
@@ -84,7 +95,7 @@ export const AppShellFrame: React.FC<Props> = ({
           }}
         >
           <WindowChrome />
-          {/* URL bar placeholder */}
+          {/* URL bar — centered, JetBrains Mono */}
           <div
             style={{
               flex: 1,
@@ -97,14 +108,31 @@ export const AppShellFrame: React.FC<Props> = ({
               style={{
                 background: "rgba(0,0,0,0.05)",
                 borderRadius: 6,
-                padding: "4px 20px",
+                padding: "4px 16px",
                 fontSize: 12,
                 color: palette.muted,
-                fontFamily: "ui-monospace, monospace",
+                fontFamily: monoFont,
                 minWidth: 200,
                 textAlign: "center",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                justifyContent: "center",
               }}
             >
+              {/* Live green dot when showLiveDot is true */}
+              {showLiveDot && (
+                <div
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: 999,
+                    background: "#28C840",
+                    flexShrink: 0,
+                    boxShadow: "0 0 4px rgba(40,200,64,0.6)",
+                  }}
+                />
+              )}
               localhost:3000
             </div>
           </div>

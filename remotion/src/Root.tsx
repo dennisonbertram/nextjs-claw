@@ -3,7 +3,7 @@ import { Composition, Still } from "remotion";
 import { Demo } from "./Demo";
 import { Banner } from "./Banner";
 
-// Total frames: 45+45+45+150+90+75 = 450 frames @ 30fps = 15s
+// Total frames: 30+45+45+75+60+45 = 300 frames @ 30fps = 10s
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -11,7 +11,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="Demo"
         component={Demo}
-        durationInFrames={450}
+        durationInFrames={300}
         fps={30}
         width={1920}
         height={1080}

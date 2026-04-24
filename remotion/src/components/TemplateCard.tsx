@@ -1,6 +1,12 @@
 import React from "react";
 import { Img, staticFile } from "remotion";
 import { palette } from "../palette";
+import { loadFont as loadInter } from "@remotion/google-fonts/Inter";
+
+const { fontFamily: interFont } = loadInter("normal", {
+  weights: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+});
 
 interface Props {
   slug: string;
@@ -17,14 +23,11 @@ export const TemplateCard: React.FC<Props> = ({
   highlightOpacity = 0,
   scale = 1,
 }) => {
-  const borderColor = highlighted
-    ? palette.accent
-    : palette.line;
+  const borderColor = highlighted ? palette.accent : "rgba(0,0,0,0.06)";
   const borderWidth = highlighted ? 2 : 1;
-  const shadowAlpha = Math.round(highlightOpacity * 80);
   const boxShadow = highlighted
-    ? `0 0 0 2px rgba(194, 65, 12, ${highlightOpacity * 0.4})`
-    : "none";
+    ? `0 0 0 2px rgba(194, 65, 12, ${highlightOpacity * 0.4}), 0 2px 8px rgba(0,0,0,0.04)`
+    : "0 2px 8px rgba(0,0,0,0.04)";
 
   return (
     <div
@@ -33,7 +36,7 @@ export const TemplateCard: React.FC<Props> = ({
         width: "100%",
         position: "relative",
         overflow: "hidden",
-        borderRadius: 6,
+        borderRadius: 8,
         border: `${borderWidth}px solid ${borderColor}`,
         background: palette.subtle,
         transform: `scale(${scale})`,
@@ -64,16 +67,18 @@ export const TemplateCard: React.FC<Props> = ({
             position: "absolute",
             inset: 0,
             background:
-              "linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.08) 50%, transparent 100%)",
+              "linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.05) 45%, transparent 100%)",
           }}
         />
       </div>
+      {/* Title bar — 8px padding, semibold Inter 13px */}
       <div
         style={{
           position: "absolute",
-          inset: 0,
           bottom: 0,
-          padding: 8,
+          left: 0,
+          right: 0,
+          padding: "8px 10px",
           display: "flex",
           alignItems: "flex-end",
         }}
@@ -81,11 +86,12 @@ export const TemplateCard: React.FC<Props> = ({
         <p
           style={{
             margin: 0,
-            fontSize: 11,
+            fontSize: 13,
             fontWeight: 600,
             color: "#f5f5f5",
-            textShadow: "0 1px 3px rgba(0,0,0,0.5)",
-            fontFamily: "Inter, sans-serif",
+            textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+            fontFamily: interFont,
+            lineHeight: 1.2,
           }}
         >
           {name}

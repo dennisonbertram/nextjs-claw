@@ -31,47 +31,55 @@ const TEMPLATES_POPULAR = [
   { slug: "09-restaurant-local", name: "Restaurant" },
 ];
 
-// Scene 2: ShellReveal — 60 frames (2s) — preview + panel compose cleanly, less rushed
-// Both slide in simultaneously over 20f with parallax
-// Cards stagger in 8-10 frames apart
+// Scene 2: ShellReveal — 45 frames (1.5s)
+// Preview + panel slide in simultaneously over 18f (faster springs)
+// Cards stagger 4f apart, starting at frame 10 — last card at frame 30
+// NO hold: cards still fanning in through frame 34 (tail overlaps next scene crossfade)
+// CONTINUOUS MOTION: preview drifts +0.2px/frame horizontally after landing
+// CONTINUOUS MOTION: background rotates 0.1°/frame throughout
 export const ShellReveal: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Preview parallax entry: slides from left + slight y offset
+  // Preview parallax entry: slides from left + slight y offset — faster spring
   const previewSpring = spring({
     frame,
     fps,
     from: 0,
     to: 1,
-    config: { damping: 18, stiffness: 140 },
-    durationInFrames: 20,
+    config: { damping: 14, stiffness: 180 },
+    durationInFrames: 18,
   });
-  const previewX = interpolate(previewSpring, [0, 1], [-80, 0]);
+  const previewXEntry = interpolate(previewSpring, [0, 1], [-80, 0]);
   const previewY = interpolate(previewSpring, [0, 1], [12, 0]);
-  const previewOpacity = interpolate(frame, [0, 12], [0, 1], {
+  // Continuous parallax drift after entry — 0.2px/frame
+  const previewXDrift = frame * 0.2;
+  const previewOpacity = interpolate(frame, [0, 8], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Panel entry from right with scale lift (0.98→1)
+  // Panel entry from right with scale lift (0.97→1) — faster spring
   const panelSpring = spring({
     frame,
     fps,
     from: 0,
     to: 1,
-    config: { damping: 18, stiffness: 140 },
-    durationInFrames: 22,
+    config: { damping: 14, stiffness: 180 },
+    durationInFrames: 18,
   });
   const panelX = interpolate(panelSpring, [0, 1], [80, 0]);
   const panelScale = interpolate(panelSpring, [0, 1], [0.97, 1]);
-  const panelOpacity = interpolate(frame, [0, 12], [0, 1], {
+  const panelOpacity = interpolate(frame, [0, 8], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Background pulse
-  const bgRotation = interpolate(frame, [0, 60], [0, 5], {
+  // Global background drift — 0.1°/frame
+  const bgRotation = frame * 0.1;
+
+  // Fade out at end — crossfade to TemplatePick
+  const sceneOpacity = interpolate(frame, [38, 45], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -80,6 +88,7 @@ export const ShellReveal: React.FC = () => {
     <AbsoluteFill
       style={{
         background: `conic-gradient(from ${bgRotation}deg at 30% 70%, ${palette.bg} 0%, #ede8dc 50%, ${palette.bg} 100%)`,
+        opacity: sceneOpacity,
       }}
     >
       <div
@@ -97,7 +106,8 @@ export const ShellReveal: React.FC = () => {
             flex: 1,
             background: palette.previewBg,
             overflow: "hidden",
-            transform: `translateX(${previewX}px) translateY(${previewY}px)`,
+            // Entry motion + continuous parallax drift
+            transform: `translateX(${previewXEntry + previewXDrift}px) translateY(${previewY}px)`,
             opacity: previewOpacity,
             display: "flex",
             alignItems: "center",
@@ -124,7 +134,7 @@ export const ShellReveal: React.FC = () => {
                 borderRadius: 12,
                 padding: "48px 32px",
                 marginBottom: 24,
-                boxShadow: `0 0 40px rgba(194, 65, 12, 0.08)`,
+                boxShadow: `0 0 ${20 + Math.sin(frame / 8) * 15}px rgba(194, 65, 12, 0.10)`,
               }}
             >
               <div
@@ -260,22 +270,21 @@ export const ShellReveal: React.FC = () => {
                 </div>
               ))}
             </div>
-            {/* Staggered template cards */}
+            {/* Staggered template cards — 4f apart starting at frame 10 */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {TEMPLATES_POPULAR.map((t, cardIdx) => {
-                // Each card staggers 5 frames apart, starts at frame 8
-                const cardStartFrame = 8 + cardIdx * 5;
+                const cardStartFrame = 10 + cardIdx * 4;
                 const cardFrame = frame - cardStartFrame;
                 const cardSpring = spring({
                   frame: cardFrame,
                   fps,
                   from: 0,
                   to: 1,
-                  config: { damping: 16, stiffness: 160 },
-                  durationInFrames: 12,
+                  config: { damping: 14, stiffness: 200 },
+                  durationInFrames: 10,
                 });
                 const cardY = interpolate(cardSpring, [0, 1], [20, 0]);
-                const cardOpacity = interpolate(cardFrame, [0, 8], [0, 1], {
+                const cardOpacity = interpolate(cardFrame, [0, 6], [0, 1], {
                   extrapolateLeft: "clamp",
                   extrapolateRight: "clamp",
                 });

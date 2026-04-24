@@ -1,6 +1,8 @@
 import React from "react";
 import {
   useCurrentFrame,
+  useVideoConfig,
+  spring,
   interpolate,
   Easing,
   AbsoluteFill,
@@ -32,17 +34,31 @@ const TEMPLATES_POPULAR = [
 
 const USER_TEXT = "Build me a SaaS landing page.";
 
-// Scene 3: TemplatePick — 60 frames (2s)
-// Hover: 0-10f  Click feedback: 10-20f  Bubble snaps in at 20f  Grid fades at 25f
+// Scene 3: TemplatePick — 45 frames (1.5s) — continuous motion throughout
+// Frame 0-8:   SaaS card gets coral ring highlight (Part C: highlight before click)
+// Frame 0-12:  saasHighlightOpacity fades in → coral ring appears
+// Frame 8-18:  card scale pulse (hover → click → settle)
+// Frame 15-20: user bubble fades in
+// Frame 18-38: typewriter text (fast)
+// Frame 20-38: grid fades out as bubble appears
+// GLOBAL BG DRIFT: 0.1°/frame
+// NO hold: scene ends at 45, typewriter finishing at ~38
 
 export const TemplatePick: React.FC = () => {
   const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
 
-  // SaaS card highlight: quick scale up + border glow over 10 frames
+  // SaaS card coral ring highlight — appears over first 12 frames (Part C)
+  const saasHighlightOpacity = interpolate(frame, [0, 12], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  // SaaS card click: quick scale up + border glow over frames 8-18
   const saasCardScale = interpolate(
     frame,
-    [0, 8, 12, 20, 22],
-    [1, 1.04, 0.97, 1.0, 1.0],
+    [8, 12, 15, 20],
+    [1, 1.04, 0.97, 1.0],
     {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
@@ -50,33 +66,38 @@ export const TemplatePick: React.FC = () => {
     }
   );
 
-  const saasHighlightOpacity = interpolate(frame, [0, 8], [0, 1], {
+  // User bubble snaps in at frame 15 (tighter than v3's 20)
+  const bubbleOpacity = interpolate(frame, [15, 20], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // User bubble snaps in at frame 20
-  const bubbleOpacity = interpolate(frame, [20, 26], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // Typewriter: fast, 20 chars in 20 frames = almost instant
+  // Typewriter: 18 chars in 20 frames — fast
   const charsToShow = Math.floor(
-    interpolate(frame, [22, 45], [0, USER_TEXT.length], {
+    interpolate(frame, [18, 38], [0, USER_TEXT.length], {
       extrapolateLeft: "clamp",
       extrapolateRight: "clamp",
     })
   );
 
-  // Template grid fades out as user bubble appears
-  const gridOpacity = interpolate(frame, [25, 40], [1, 0.15], {
+  // Template grid fades as bubble appears
+  const gridOpacity = interpolate(frame, [20, 35], [1, 0.12], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
+  // Global background drift — 0.1°/frame
+  const bgRotation = frame * 0.1;
+
+  // Cards stagger 3 frames apart for continuous entry (Part A)
+  const { fps: configFps } = useVideoConfig();
+
   return (
-    <AbsoluteFill style={{ background: palette.bg }}>
+    <AbsoluteFill
+      style={{
+        background: `conic-gradient(from ${bgRotation}deg at 40% 60%, ${palette.bg} 0%, #ede8dc 50%, ${palette.bg} 100%)`,
+      }}
+    >
       <div
         style={{
           width: 1920,
@@ -86,7 +107,7 @@ export const TemplatePick: React.FC = () => {
           overflow: "hidden",
         }}
       >
-        {/* Preview area — macOS window frame */}
+        {/* Preview area */}
         <div
           style={{
             flex: 1,
@@ -126,7 +147,7 @@ export const TemplatePick: React.FC = () => {
           </div>
         </div>
 
-        {/* Chat panel — with depth shadow */}
+        {/* Chat panel */}
         <div
           style={{
             width: 480,
@@ -193,6 +214,7 @@ export const TemplatePick: React.FC = () => {
                       color: palette.muted,
                       fontFamily: monoFont,
                       marginTop: 2,
+                      lineHeight: 1.35,
                     }}
                   >
                     claude-opus-4-7 · idle
@@ -241,22 +263,47 @@ export const TemplatePick: React.FC = () => {
                   </div>
                 ))}
               </div>
+              {/* Cards stagger 3f apart (Part A) */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                {TEMPLATES_POPULAR.map((t, i) => (
-                  <TemplateCard
-                    key={t.slug}
-                    slug={t.slug}
-                    name={t.name}
-                    highlighted={i === 0}
-                    highlightOpacity={i === 0 ? saasHighlightOpacity : 0}
-                    scale={i === 0 ? saasCardScale : 1}
-                  />
-                ))}
+                {TEMPLATES_POPULAR.map((t, i) => {
+                  const cardStartFrame = i * 3;
+                  const cardFrame = frame - cardStartFrame;
+                  const cardSpring = spring({
+                    frame: cardFrame,
+                    fps,
+                    from: 0,
+                    to: 1,
+                    config: { damping: 14, stiffness: 200 },
+                    durationInFrames: 10,
+                  });
+                  const cardY = interpolate(cardSpring, [0, 1], [16, 0]);
+                  const cardOpacity = interpolate(cardFrame, [0, 5], [0, 1], {
+                    extrapolateLeft: "clamp",
+                    extrapolateRight: "clamp",
+                  });
+                  return (
+                    <div
+                      key={t.slug}
+                      style={{
+                        transform: `translateY(${cardY}px)`,
+                        opacity: cardOpacity,
+                      }}
+                    >
+                      <TemplateCard
+                        slug={t.slug}
+                        name={t.name}
+                        highlighted={i === 0}
+                        highlightOpacity={i === 0 ? saasHighlightOpacity : 0}
+                        scale={i === 0 ? saasCardScale : 1}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* User bubble — bigger, warm dark gray #1A1918 */}
-            {frame >= 20 && (
+            {/* User bubble — snaps in at frame 15 */}
+            {frame >= 15 && (
               <div
                 style={{
                   opacity: bubbleOpacity,

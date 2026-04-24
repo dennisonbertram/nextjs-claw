@@ -10,9 +10,15 @@ import { palette } from "../palette";
 import { InfiniteLogo } from "../components/InfiniteLogo";
 import { Grain } from "../components/Grain";
 import { loadFont as loadInter } from "@remotion/google-fonts/Inter";
+import { loadFont as loadJetBrains } from "@remotion/google-fonts/JetBrainsMono";
 
 const { fontFamily: interFont } = loadInter("normal", {
   weights: ["400", "500", "600", "700"],
+  subsets: ["latin"],
+});
+
+const { fontFamily: monoFont } = loadJetBrains("normal", {
+  weights: ["400", "500", "600"],
   subsets: ["latin"],
 });
 
@@ -25,6 +31,7 @@ function CharReveal({
   fontWeight,
   color,
   letterSpacing,
+  fontFamily,
 }: {
   text: string;
   startFrame: number;
@@ -33,6 +40,7 @@ function CharReveal({
   fontWeight: number;
   color: string;
   letterSpacing?: number;
+  fontFamily?: string;
 }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -55,10 +63,10 @@ function CharReveal({
           fps,
           from: 0,
           to: 1,
-          config: { damping: 14, stiffness: 200 },
-          durationInFrames: 18,
+          config: { damping: 14, stiffness: 240 },
+          durationInFrames: 12,
         });
-        const charOpacity = interpolate(charFrame, [0, 8], [0, 1], {
+        const charOpacity = interpolate(charFrame, [0, 5], [0, 1], {
           extrapolateLeft: "clamp",
           extrapolateRight: "clamp",
         });
@@ -69,7 +77,7 @@ function CharReveal({
               display: "inline-block",
               fontSize,
               fontWeight,
-              fontFamily: interFont,
+              fontFamily: fontFamily ?? interFont,
               color,
               letterSpacing: letterSpacing ?? 0,
               lineHeight: 1.1,
@@ -87,35 +95,43 @@ function CharReveal({
   );
 }
 
-// Scene 1: Title — 60 frames (2s) — breathe, let "the infinite app" register
-// Frame 0-10: logo springs in (scale 0→1, rotate -15°→0°)
-// Frame 8-30: title chars pop in (stagger 0.4f/char — was 1f/char, fixed clipping)
-// Frame 26-42: subtitle chars pop in
-// Frame 50-60: fade out
+// Scene 1: Title — 30 frames (1.0s) — NO hold, everything moves
+// Frame 0-8:   logo springs in (scale 0→1, rotate -15°→0°) — stiffness 220
+// Frame 5-16:  "the infinite app" chars pop in (0.3f/char, fast)
+// Frame 12-22: subtitle chars pop in
+// Frame 20-26: value-prop line fades in (Part C)
+// Frame 22-30: cross-fade out
+// GLOBAL BACKGROUND DRIFT: 0.15°/frame continuously
 export const Title: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Logo spring: scale 0→1, rotate -15°→0°
+  // Logo spring — faster, higher stiffness
   const logoSpring = spring({
     frame,
     fps,
     from: 0,
     to: 1,
-    config: { damping: 12, stiffness: 120 },
-    durationInFrames: 18,
+    config: { damping: 14, stiffness: 220 },
+    durationInFrames: 12,
   });
   const logoScale = interpolate(logoSpring, [0, 1], [0, 1]);
   const logoRotate = interpolate(logoSpring, [0, 1], [-15, 0]);
 
-  // Overall fade out at end
-  const totalOpacity = interpolate(frame, [50, 60], [1, 0], {
+  // Continuous subtle breathing on logo after it lands
+  const logoBreathe = 1.0 + Math.sin(frame / 8) * 0.006;
+
+  // Overall fade out — tight crossfade starting at 22
+  const totalOpacity = interpolate(frame, [22, 30], [1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Subtle rotating background gradient
-  const bgRotation = interpolate(frame, [0, 60], [0, 8], {
+  // Global background drift — 0.15°/frame
+  const bgRotation = frame * 0.15;
+
+  // Value-prop line opacity — fades in at frame 20 (Part C)
+  const valuePropOpacity = interpolate(frame, [20, 26], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -128,15 +144,15 @@ export const Title: React.FC = () => {
         alignItems: "center",
         justifyContent: "center",
         flexDirection: "column",
-        gap: 28,
+        gap: 24,
         opacity: totalOpacity,
         overflow: "visible",
       }}
     >
-      {/* Logo with spring + rotation */}
+      {/* Logo with spring + rotation + continuous breathe */}
       <div
         style={{
-          transform: `scale(${logoScale}) rotate(${logoRotate}deg)`,
+          transform: `scale(${logoScale * logoBreathe}) rotate(${logoRotate}deg)`,
         }}
       >
         <InfiniteLogo size={96} />
@@ -152,11 +168,11 @@ export const Title: React.FC = () => {
           overflow: "visible",
         }}
       >
-        {/* Reduced stagger from 1f to 0.4f/char — fixes "the infinit..." clipping */}
+        {/* Fast stagger 0.3f/char — full title visible by frame 16 */}
         <CharReveal
           text="the infinite app"
-          startFrame={8}
-          staggerFrames={0.4}
+          startFrame={5}
+          staggerFrames={0.3}
           fontSize={56}
           fontWeight={600}
           color={palette.ink}
@@ -164,12 +180,34 @@ export const Title: React.FC = () => {
         />
         <CharReveal
           text="a Next.js starter that builds itself"
-          startFrame={22}
-          staggerFrames={0.4}
+          startFrame={12}
+          staggerFrames={0.3}
           fontSize={22}
           fontWeight={400}
           color={palette.muted}
         />
+
+        {/* Value-prop line — Part C: runs locally · your claude subscription · all in your dev */}
+        <div
+          style={{
+            opacity: valuePropOpacity,
+            display: "flex",
+            alignItems: "center",
+            gap: 0,
+            marginTop: 4,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 14,
+              fontFamily: monoFont,
+              color: palette.muted,
+              letterSpacing: 0.2,
+            }}
+          >
+            runs locally · your claude subscription · all in your dev
+          </span>
+        </div>
       </div>
 
       <Grain />

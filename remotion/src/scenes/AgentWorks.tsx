@@ -25,23 +25,26 @@ const { fontFamily: monoFont } = loadJetBrains("normal", {
   subsets: ["latin"],
 });
 
-// Scene 4: AgentWorks — 90 frames (3s)
-// Chips snap in FAST: 0, 8, 16, 24f starts each springs in over 15f
-// Each "running → ok" in ~10f after appearing
-// Chip sequence complete ~40f
-// Left panel: skeleton pulse loader while chips run (0-45f)
-// Wipe reveal starts at 45f, completes 60f
-// Leave 30f to breathe (60-90f)
+// Scene 4: AgentWorks — 75 frames (2.5s)
+// Chips fire 5f apart: 0, 5, 10, 15 (4 chips)
+// Each running→ok in ~12f after appearing
+// Skeleton: 0-40f
+// Wipe reveal: starts at 40f, completes 55f
+// Assistant text: fades in at 55f
+// Logo amber dot pulses THROUGHOUT entire scene (not just while working)
+// Green localhost dot shown in chrome bar (Part C)
+// NO hold > 20f — continuous skeleton pulse keeps motion alive
 
-// Tool chips — fast 8f stagger
+// Tool chips — fast 5f stagger
 const TOOLS = [
-  { name: "grep", target: "I am an empty canvas", startFrame: 0, flipFrame: 14 },
-  { name: "read", target: "app/preview/page.tsx", startFrame: 8, flipFrame: 22 },
-  { name: "edit", target: "app/preview/page.tsx", startFrame: 16, flipFrame: 30 },
+  { name: "grep", target: "I am an empty canvas", startFrame: 0, flipFrame: 12 },
+  { name: "read", target: "app/preview/page.tsx", startFrame: 5, flipFrame: 17 },
+  { name: "edit", target: "app/preview/page.tsx", startFrame: 10, flipFrame: 22 },
+  { name: "write", target: "app/page.tsx", startFrame: 15, flipFrame: 27 },
 ];
 
-const WIPE_START = 45;
-const WIPE_END = 60;
+const WIPE_START = 40;
+const WIPE_END = 55;
 
 interface ToolChipAnimatedProps {
   name: string;
@@ -73,33 +76,32 @@ const ToolChipAnimated: React.FC<ToolChipAnimatedProps> = ({
     fps,
     from: 0,
     to: 1,
-    config: { damping: 14, stiffness: 220 },
-    durationInFrames: 14,
+    config: { damping: 14, stiffness: 240 },
+    durationInFrames: 12,
   });
-  const translateX = interpolate(entrySpring, [0, 1], [50, 0]);
-  const opacity = interpolate(chipFrame, [0, 5], [0, 1], {
+  // Pixel-snap the translateX once settled
+  const translateXRaw = interpolate(entrySpring, [0, 1], [50, 0]);
+  const translateX = chipFrame > 14 ? Math.round(translateXRaw) : translateXRaw;
+  const opacity = interpolate(chipFrame, [0, 4], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Pulse: scale 1↔1.2 + opacity 1↔0.5 every 10 frames
-  const pulsePhase = (chipFrame % 10) / 10;
-  const pulseScale = interpolate(pulsePhase, [0, 0.5, 1], [1, 1.2, 1]);
-  const pulseOpacity = interpolate(pulsePhase, [0, 0.5, 1], [1, 0.45, 1]);
+  // Continuous pulse while running — ALWAYS pulsing, not just briefly
+  const pulsePhase = (currentFrame % 12) / 12;
+  const pulseScale = interpolate(pulsePhase, [0, 0.5, 1], [1, 1.25, 1]);
+  const pulseOpacity = interpolate(pulsePhase, [0, 0.5, 1], [1, 0.4, 1]);
 
   const isRunning = currentFrame < flipFrame;
   const state: ToolState = isRunning ? "running" : "ok";
 
-  // Vertical timeline connector line — coral tint
-  // Connects prompt bubble to first chip, and chip to chip
-  const lineOpacity = interpolate(chipFrame, [5, 10], [0, 1], {
+  const lineOpacity = interpolate(chipFrame, [4, 8], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
   return (
     <div style={{ position: "relative" }}>
-      {/* Timeline vertical stroke above chip */}
       {!isLast && (
         <div
           style={{
@@ -128,7 +130,6 @@ const ToolChipAnimated: React.FC<ToolChipAnimatedProps> = ({
           pulseScale={isRunning ? pulseScale : 1}
           pulseOpacity={isRunning ? pulseOpacity : 1}
         />
-        {/* Timeline connector from this chip to next */}
         {!isLast && currentFrame >= (nextChipStart ?? 999) && (
           <div
             style={{
@@ -146,10 +147,10 @@ const ToolChipAnimated: React.FC<ToolChipAnimatedProps> = ({
   );
 };
 
-// Skeleton loader — 3 pulsing bars simulating content building
+// Skeleton loader — continuously pulsing
 const SkeletonLoader: React.FC<{ frame: number }> = ({ frame }) => {
   const pulsePhase = (frame % 20) / 20;
-  const pulseOpacity = interpolate(pulsePhase, [0, 0.5, 1], [0.4, 0.8, 0.4]);
+  const pulseOpacity = interpolate(pulsePhase, [0, 0.5, 1], [0.4, 0.85, 0.4]);
 
   const bars = [
     { width: "80%", height: 18 },
@@ -183,7 +184,6 @@ const SkeletonLoader: React.FC<{ frame: number }> = ({ frame }) => {
             borderRadius: 4,
             background: palette.subtle,
             opacity: pulseOpacity,
-            // Stagger the pulse per bar
             transform: `scaleX(${interpolate(
               ((frame + i * 3) % 20) / 20,
               [0, 0.5, 1],
@@ -197,108 +197,51 @@ const SkeletonLoader: React.FC<{ frame: number }> = ({ frame }) => {
   );
 };
 
-// Empty canvas with pulsing glow
-const EmptyCanvas: React.FC<{ frame: number }> = ({ frame }) => {
-  const glowPhase = (frame % 40) / 40;
-  const glowOpacity = interpolate(glowPhase, [0, 0.5, 1], [0.08, 0.18, 0.08]);
-
-  return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: palette.previewBg,
-      }}
-    >
-      <div style={{ maxWidth: 600, textAlign: "center", padding: "0 48px" }}>
-        <div
-          style={{
-            border: `1.5px dashed ${palette.line}`,
-            borderRadius: 12,
-            padding: "48px 32px",
-            boxShadow: `0 0 40px rgba(194, 65, 12, ${glowOpacity})`,
-            transition: "box-shadow 0.1s",
-          }}
-        >
-          <div
-            style={{
-              fontSize: 36,
-              fontWeight: 600,
-              color: palette.ink,
-              fontFamily: interFont,
-              letterSpacing: -0.5,
-              marginBottom: 12,
-            }}
-          >
-            I am an empty canvas.
-          </div>
-          <div
-            style={{
-              fontSize: 22,
-              fontWeight: 400,
-              color: palette.muted,
-              fontFamily: interFont,
-            }}
-          >
-            Describe me.
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 export const AgentWorks: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // clipPath wipe: new site reveals from top to bottom over frames WIPE_START→WIPE_END
-  const wipeProgress = interpolate(frame, [WIPE_START, WIPE_END], [0, 100], {
+  // Wipe progress — pixel-snapped after 55
+  const wipeProgressRaw = interpolate(frame, [WIPE_START, WIPE_END], [0, 100], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
+  const wipeProgress = frame >= WIPE_END ? 100 : wipeProgressRaw;
 
-  // Old canvas: scale away + opacity to 0 as wipe starts
-  const oldOpacity = interpolate(frame, [WIPE_START, WIPE_START + 10], [1, 0], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-  const oldScale = interpolate(frame, [WIPE_START, WIPE_START + 10], [1, 0.92], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // Skeleton: shows while chips are running, fades when wipe begins
-  const skeletonOpacity = interpolate(frame, [0, 8, WIPE_START - 5, WIPE_START], [0, 1, 1, 0], {
+  // Skeleton: shows while chips run, fades when wipe begins
+  const skeletonOpacity = interpolate(frame, [0, 6, WIPE_START - 4, WIPE_START], [0, 1, 1, 0], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
   // Assistant text fades in after wipe completes
-  const assistantTextOpacity = interpolate(frame, [WIPE_END, WIPE_END + 12], [0, 1], {
+  const assistantTextOpacity = interpolate(frame, [WIPE_END, WIPE_END + 10], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  // Running pulse for logo dot
+  // Logo amber dot — pulses ALWAYS during this scene, not just while working
   const logoPulsePhase = (frame % 16) / 16;
-  const logoPulseOpacity = interpolate(logoPulsePhase, [0, 0.5, 1], [1, 0.3, 1]);
+  const logoPulseOpacity = interpolate(logoPulsePhase, [0, 0.5, 1], [1, 0.25, 1]);
 
-  // Timeline vertical line from prompt bubble to chips (fades in with first chip)
-  const timelineOpacity = interpolate(frame, [0, 8], [0, 1], {
+  // Timeline vertical line from prompt bubble
+  const timelineOpacity = interpolate(frame, [0, 6], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  const isWorking = frame < WIPE_END;
+  // Global background drift
+  const bgRotation = frame * 0.08;
 
   return (
-    <AbsoluteFill style={{ background: palette.bg }}>
+    <AbsoluteFill
+      style={{
+        background: `conic-gradient(from ${bgRotation}deg at 45% 55%, ${palette.bg} 0%, #ede8dc 50%, ${palette.bg} 100%)`,
+      }}
+    >
       <AppShellFrame
         panelWidth={480}
+        showLiveDot={true}
         children={{
           preview: (
             <div
@@ -311,7 +254,7 @@ export const AgentWorks: React.FC = () => {
                 overflow: "hidden",
               }}
             >
-              {/* Skeleton loader — shows while AI "thinks" */}
+              {/* Skeleton loader — continuously pulsing */}
               <div
                 style={{
                   position: "absolute",
@@ -322,22 +265,6 @@ export const AgentWorks: React.FC = () => {
               >
                 <SkeletonLoader frame={frame} />
               </div>
-
-              {/* Old canvas — melts away when wipe starts */}
-              {frame < WIPE_START && (
-                <div
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    opacity: oldOpacity,
-                    transform: `scale(${oldScale})`,
-                    transformOrigin: "center center",
-                    zIndex: 2,
-                  }}
-                >
-                  <EmptyCanvas frame={frame} />
-                </div>
-              )}
 
               {/* New site — clipPath wipe reveal from top to bottom */}
               <div
@@ -374,7 +301,7 @@ export const AgentWorks: React.FC = () => {
               <header
                 style={{
                   flexShrink: 0,
-                  padding: "18px 20px 0",
+                  padding: "14px 20px 0",
                   borderBottom: `1px solid ${palette.line}`,
                 }}
               >
@@ -404,20 +331,19 @@ export const AgentWorks: React.FC = () => {
                       }}
                     >
                       ∞
-                      {isWorking && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: -3,
-                            right: -3,
-                            width: 9,
-                            height: 9,
-                            borderRadius: 999,
-                            background: palette.amber,
-                            opacity: logoPulseOpacity,
-                          }}
-                        />
-                      )}
+                      {/* Amber dot pulses ALWAYS during AgentWorks */}
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: -3,
+                          right: -3,
+                          width: 9,
+                          height: 9,
+                          borderRadius: 999,
+                          background: palette.amber,
+                          opacity: logoPulseOpacity,
+                        }}
+                      />
                     </div>
                     <div>
                       <div
@@ -437,20 +363,21 @@ export const AgentWorks: React.FC = () => {
                           color: palette.muted,
                           fontFamily: monoFont,
                           marginTop: 2,
+                          lineHeight: 1.35,
                         }}
                       >
-                        claude-opus-4-7 · {isWorking ? "working" : "idle"}
+                        claude-opus-4-7 · working
                       </div>
                     </div>
                   </div>
                 </div>
               </header>
 
-              {/* Messages */}
+              {/* Messages — 16px padding for breathing room (Part B) */}
               <div
                 style={{
                   flex: 1,
-                  padding: "14px 20px",
+                  padding: "16px 20px",
                   overflow: "hidden",
                   display: "flex",
                   flexDirection: "column",
@@ -466,8 +393,8 @@ export const AgentWorks: React.FC = () => {
                       padding: "12px 16px",
                       borderRadius: 16,
                       borderBottomRightRadius: 4,
-                      maxWidth: "88%",
-                      fontSize: 20,
+                      maxWidth: "86%",
+                      fontSize: 18,
                       fontFamily: interFont,
                       lineHeight: 1.4,
                     }}
@@ -509,7 +436,7 @@ export const AgentWorks: React.FC = () => {
                       position: "relative",
                     }}
                   >
-                    {/* Vertical timeline stroke from prompt bubble bottom to first chip */}
+                    {/* Vertical timeline stroke */}
                     <div
                       style={{
                         position: "absolute",
@@ -535,16 +462,16 @@ export const AgentWorks: React.FC = () => {
                       />
                     ))}
 
-                    {/* Assistant text — after wipe completes */}
+                    {/* Assistant text after wipe completes */}
                     {frame >= WIPE_END && (
                       <div
                         style={{
                           opacity: assistantTextOpacity,
-                          fontSize: 18,
+                          fontSize: 17,
                           color: palette.ink,
                           fontFamily: interFont,
                           lineHeight: 1.5,
-                          marginTop: 6,
+                          marginTop: 8,
                         }}
                       >
                         Wrote the landing page — hero, features, pricing.

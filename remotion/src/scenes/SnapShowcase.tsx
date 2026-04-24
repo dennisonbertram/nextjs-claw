@@ -23,11 +23,13 @@ const { fontFamily: monoFont } = loadJetBrains("normal", {
   subsets: ["latin"],
 });
 
-// Scene 5: Result Showcase — 90 frames (3s)
-// The "look what we built" payoff moment
-// Left: Ghost landing with macOS window frame, gentle vertical scroll animation
-// Right: Claude's summary text fades in with good breathing room
-// No snap states — focus is the payoff
+// Scene 5: Result Showcase — 60 frames (2.0s)
+// NO hold at start — scroll begins immediately from frame 0
+// Summary text crossfades in DURING the scroll (not after)
+// Panel springs in over 15f
+// Scroll: 0 → -260px over 55f — continuous camera movement
+// Summary lines stagger 5f apart starting at frame 8 (DURING scroll)
+// GLOBAL BG DRIFT: 0.1°/frame
 
 const SUMMARY_LINES = [
   "Built your SaaS landing page.",
@@ -41,30 +43,29 @@ export const SnapShowcase: React.FC = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Background slow rotation
-  const bgRotation = interpolate(frame, [0, 90], [0, 6], {
+  // Global background drift
+  const bgRotation = frame * 0.1;
+
+  // Continuous scroll pan — starts immediately at frame 0, NO hold
+  // Pixel-snap after motion settles
+  const scrollYRaw = interpolate(frame, [0, 55], [0, -260], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
+  const scrollY = Math.round(scrollYRaw);
 
-  // Left panel: gentle vertical scroll — translateY 0 → -300 over 70 frames
-  // Image is absolutely positioned, container has overflow:hidden — translateY moves it up
-  const scrollY = interpolate(frame, [5, 70], [0, -320], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // Panel slides in from right
+  // Panel springs in from right — fast spring
   const panelSpring = spring({
     frame,
     fps,
     from: 0,
     to: 1,
-    config: { damping: 20, stiffness: 140 },
-    durationInFrames: 20,
+    config: { damping: 14, stiffness: 200 },
+    durationInFrames: 15,
   });
-  const panelX = interpolate(panelSpring, [0, 1], [60, 0]);
-  const panelOpacity = interpolate(frame, [0, 10], [0, 1], {
+  const panelXRaw = interpolate(panelSpring, [0, 1], [60, 0]);
+  const panelX = frame > 18 ? Math.round(panelXRaw) : panelXRaw;
+  const panelOpacity = interpolate(frame, [0, 8], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -105,7 +106,7 @@ export const SnapShowcase: React.FC = () => {
               left: 0,
               right: 0,
               height: 38,
-              background: "rgba(248,246,242,0.97)",
+              background: "#f0eae0",
               borderBottom: "1px solid rgba(0,0,0,0.08)",
               display: "flex",
               alignItems: "center",
@@ -114,16 +115,17 @@ export const SnapShowcase: React.FC = () => {
             }}
           >
             {/* Traffic lights */}
-            <div style={{ display: "flex", gap: 7, paddingLeft: 16 }}>
+            <div style={{ display: "flex", gap: 7, paddingLeft: 16, alignItems: "center" }}>
               {["#FF5F57", "#FEBC2E", "#28C840"].map((color, i) => (
                 <div
                   key={i}
                   style={{
-                    width: 13,
-                    height: 13,
+                    width: 12,
+                    height: 12,
                     borderRadius: 999,
                     background: color,
                     boxShadow: "inset 0 0 0 0.5px rgba(0,0,0,0.15)",
+                    flexShrink: 0,
                   }}
                 />
               ))}
@@ -133,20 +135,35 @@ export const SnapShowcase: React.FC = () => {
                 style={{
                   background: "rgba(0,0,0,0.05)",
                   borderRadius: 6,
-                  padding: "4px 20px",
+                  padding: "4px 16px",
                   fontSize: 12,
                   color: palette.muted,
-                  fontFamily: "ui-monospace, monospace",
+                  fontFamily: monoFont,
                   minWidth: 200,
                   textAlign: "center",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  justifyContent: "center",
                 }}
               >
+                {/* Green live dot */}
+                <div
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: 999,
+                    background: "#28C840",
+                    flexShrink: 0,
+                    boxShadow: "0 0 4px rgba(40,200,64,0.6)",
+                  }}
+                />
                 localhost:3000
               </div>
             </div>
           </div>
 
-          {/* Content area below chrome bar — scrolling image */}
+          {/* Content area below chrome bar — scrolling image, full-bleed */}
           <div
             style={{
               position: "absolute",
@@ -172,7 +189,7 @@ export const SnapShowcase: React.FC = () => {
             />
           </div>
 
-          {/* "Just built" badge — anchored to top of content area */}
+          {/* "Just built" badge */}
           <div
             style={{
               position: "absolute",
@@ -241,7 +258,7 @@ export const SnapShowcase: React.FC = () => {
                 <div style={{ fontSize: 18, fontWeight: 600, color: palette.ink, fontFamily: interFont }}>
                   the infinite app
                 </div>
-                <div style={{ fontSize: 13, color: palette.muted, fontFamily: monoFont, marginTop: 2 }}>
+                <div style={{ fontSize: 13, color: palette.muted, fontFamily: monoFont, marginTop: 2, lineHeight: 1.35 }}>
                   claude-opus-4-7 · idle
                 </div>
               </div>
@@ -252,7 +269,7 @@ export const SnapShowcase: React.FC = () => {
           <div
             style={{
               flex: 1,
-              padding: "18px 20px",
+              padding: "16px 20px",
               overflow: "hidden",
               display: "flex",
               flexDirection: "column",
@@ -269,7 +286,7 @@ export const SnapShowcase: React.FC = () => {
                   borderRadius: 16,
                   borderBottomRightRadius: 4,
                   maxWidth: "88%",
-                  fontSize: 20,
+                  fontSize: 18,
                   fontFamily: interFont,
                   lineHeight: 1.4,
                 }}
@@ -278,7 +295,7 @@ export const SnapShowcase: React.FC = () => {
               </div>
             </div>
 
-            {/* Claude's response with tool summary */}
+            {/* Claude's response */}
             <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
               <div
                 style={{
@@ -303,7 +320,7 @@ export const SnapShowcase: React.FC = () => {
               <div style={{ flex: 1 }}>
                 {/* Tool chips summary — all done */}
                 <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-                  {["grep", "read", "edit"].map((tool) => (
+                  {["grep", "read", "edit", "write"].map((tool) => (
                     <div
                       key={tool}
                       style={{
@@ -315,7 +332,7 @@ export const SnapShowcase: React.FC = () => {
                         borderLeft: `3px solid ${palette.ok}`,
                         padding: "6px 12px 6px 8px",
                         borderRadius: 5,
-                        fontSize: 15,
+                        fontSize: 14,
                         fontFamily: monoFont,
                       }}
                     >
@@ -325,31 +342,31 @@ export const SnapShowcase: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Summary text — with generous top breathing room */}
+                {/* Summary lines — stagger in DURING scroll starting at frame 8 */}
                 {SUMMARY_LINES.map((line, i) => {
                   const lineOpacity = interpolate(
                     frame,
-                    [10 + i * 6, 22 + i * 6],
+                    [8 + i * 5, 16 + i * 5],
                     [0, 1],
                     { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
                   );
                   const lineY = interpolate(
                     frame,
-                    [10 + i * 6, 22 + i * 6],
-                    [12, 0],
+                    [8 + i * 5, 16 + i * 5],
+                    [10, 0],
                     { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
                   );
                   return (
                     <div
                       key={i}
                       style={{
-                        fontSize: i === 0 ? 20 : 17,
+                        fontSize: i === 0 ? 19 : 16,
                         fontWeight: i === 0 ? 600 : 400,
                         color: i === 0 ? palette.ink : palette.muted,
                         fontFamily: interFont,
                         lineHeight: 1.65,
                         opacity: lineOpacity,
-                        transform: `translateY(${lineY}px)`,
+                        transform: `translateY(${Math.round(lineY)}px)`,
                         paddingLeft: i > 0 ? 10 : 0,
                         marginBottom: i === 0 ? 8 : 0,
                       }}
