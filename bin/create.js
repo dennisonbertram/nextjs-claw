@@ -25,9 +25,14 @@ function toKebabCase(str) {
 const EXCLUDED = new Set([
   'node_modules',
   '.next',
+  '.turbo',
   '.git',
+  'bun.lock',
   'bun.lockb',
   'package-lock.json',
+  'yarn.lock',
+  'pnpm-lock.yaml',
+  'next-env.d.ts',
 ]);
 
 function copyDir(src, dest) {

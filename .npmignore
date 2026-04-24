@@ -7,10 +7,19 @@
 !template/
 !template/**
 !README.md
+!LICENSE
 !package.json
 
 # but exclude build artifacts inside template
-template/node_modules/
 template/.next/
+template/.next/**
+template/node_modules/
+template/node_modules/**
+template/bun.lock
 template/bun.lockb
 template/package-lock.json
+template/yarn.lock
+template/.turbo/
+template/.turbo/**
+template/*.tsbuildinfo
+template/next-env.d.ts

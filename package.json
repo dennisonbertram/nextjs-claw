@@ -5,10 +5,31 @@
   "bin": {
     "nextjs-claw": "bin/create.js"
   },
-  "files": ["bin", "template", "README.md"],
-  "keywords": ["nextjs", "claude", "ai", "starter", "scaffolding"],
+  "files": ["bin", "template", "README.md", "LICENSE"],
+  "keywords": [
+    "nextjs",
+    "next",
+    "react",
+    "claude",
+    "claude-code",
+    "ai",
+    "agent",
+    "starter",
+    "scaffold",
+    "create-app",
+    "template",
+    "anthropic"
+  ],
   "author": "Dennison Bertram",
   "license": "MIT",
+  "homepage": "https://github.com/dennisonbertram/nextjs-claw",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dennisonbertram/nextjs-claw.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dennisonbertram/nextjs-claw/issues"
+  },
   "engines": {
     "node": ">=18"
   }
