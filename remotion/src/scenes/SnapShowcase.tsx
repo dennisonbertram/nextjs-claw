@@ -25,9 +25,9 @@ const { fontFamily: monoFont } = loadJetBrains("normal", {
 
 // Scene 5: Result Showcase — 90 frames (3s)
 // The "look what we built" payoff moment
-// Left: Ghost landing fills the frame, gentle vertical scroll animation (translateY 0→-200px over 60f)
-// Right: Claude's summary text fades in
-// No snap states — focus is the ask
+// Left: Ghost landing with macOS window frame, gentle vertical scroll animation
+// Right: Claude's summary text fades in with good breathing room
+// No snap states — focus is the payoff
 
 const SUMMARY_LINES = [
   "Built your SaaS landing page.",
@@ -47,11 +47,11 @@ export const SnapShowcase: React.FC = () => {
     extrapolateRight: "clamp",
   });
 
-  // Left panel: gentle vertical scroll — translateY 0 → -200 over 60 frames
-  const scrollY = interpolate(frame, [0, 60], [0, -200], {
+  // Left panel: gentle vertical scroll — translateY 0 → -300 over 70 frames
+  // Image is absolutely positioned, container has overflow:hidden — translateY moves it up
+  const scrollY = interpolate(frame, [5, 70], [0, -320], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
-    easing: (t) => t * (2 - t), // ease out
   });
 
   // Panel slides in from right
@@ -65,12 +65,6 @@ export const SnapShowcase: React.FC = () => {
   });
   const panelX = interpolate(panelSpring, [0, 1], [60, 0]);
   const panelOpacity = interpolate(frame, [0, 10], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  // Summary text lines stagger in starting frame 15
-  const summaryOpacity = interpolate(frame, [15, 28], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -91,44 +85,100 @@ export const SnapShowcase: React.FC = () => {
           position: "relative",
         }}
       >
-        {/* Preview area — Ghost landing with scroll */}
+        {/* Preview area — Ghost landing with macOS window chrome */}
         <div
           style={{
             flex: 1,
             overflow: "hidden",
             position: "relative",
-            borderRadius: 12,
-            border: "1px solid #E5E5E5",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.04)",
-            margin: "12px 0 12px 12px",
+            borderRadius: 10,
+            border: "1.5px solid rgba(0,0,0,0.14)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06), 8px 0 32px rgba(0,0,0,0.06)",
+            margin: "16px 0 16px 16px",
           }}
         >
-          {/* Scrolling image — translateY creates scroll effect */}
+          {/* macOS window chrome bar */}
           <div
             style={{
-              width: "100%",
-              height: "140%", // taller to allow scroll
-              transform: `translateY(${scrollY}px)`,
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 38,
+              background: "rgba(248,246,242,0.97)",
+              borderBottom: "1px solid rgba(0,0,0,0.08)",
+              display: "flex",
+              alignItems: "center",
+              zIndex: 20,
+              borderRadius: "10px 10px 0 0",
+            }}
+          >
+            {/* Traffic lights */}
+            <div style={{ display: "flex", gap: 7, paddingLeft: 16 }}>
+              {["#FF5F57", "#FEBC2E", "#28C840"].map((color, i) => (
+                <div
+                  key={i}
+                  style={{
+                    width: 13,
+                    height: 13,
+                    borderRadius: 999,
+                    background: color,
+                    boxShadow: "inset 0 0 0 0.5px rgba(0,0,0,0.15)",
+                  }}
+                />
+              ))}
+            </div>
+            <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
+              <div
+                style={{
+                  background: "rgba(0,0,0,0.05)",
+                  borderRadius: 6,
+                  padding: "4px 20px",
+                  fontSize: 12,
+                  color: palette.muted,
+                  fontFamily: "ui-monospace, monospace",
+                  minWidth: 200,
+                  textAlign: "center",
+                }}
+              >
+                localhost:3000
+              </div>
+            </div>
+          </div>
+
+          {/* Content area below chrome bar — scrolling image */}
+          <div
+            style={{
+              position: "absolute",
+              top: 38,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              overflow: "hidden",
             }}
           >
             <Img
               src={staticFile("saas-landing-light.png")}
               style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
                 width: "100%",
-                height: "100%",
-                objectFit: "cover",
-                objectPosition: "top",
+                height: "auto",
+                display: "block",
+                transform: `translateY(${scrollY}px)`,
+                transformOrigin: "top center",
               }}
             />
           </div>
 
-          {/* "Just built" badge anchored to top of preview */}
+          {/* "Just built" badge — anchored to top of content area */}
           <div
             style={{
               position: "absolute",
-              top: 16,
+              top: 52,
               left: 16,
-              background: "rgba(244,240,232,0.92)",
+              background: "rgba(244,240,232,0.95)",
               border: `1px solid ${palette.line}`,
               borderRadius: 6,
               padding: "6px 14px",
@@ -136,8 +186,8 @@ export const SnapShowcase: React.FC = () => {
               fontWeight: 500,
               color: palette.accent,
               fontFamily: monoFont,
-              backdropFilter: "blur(4px)",
               boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+              zIndex: 10,
             }}
           >
             ✓ Just built
@@ -151,8 +201,8 @@ export const SnapShowcase: React.FC = () => {
             minWidth: 480,
             height: "100%",
             background: palette.panel,
-            borderLeft: "1px solid rgba(0,0,0,0.08)",
-            boxShadow: "-10px 0px 30px rgba(0,0,0,0.05)",
+            borderLeft: "1px solid rgba(0,0,0,0.10)",
+            boxShadow: "-12px 0px 36px rgba(0,0,0,0.08)",
             transform: `translateX(${panelX}px)`,
             opacity: panelOpacity,
             display: "flex",
@@ -228,7 +278,7 @@ export const SnapShowcase: React.FC = () => {
               </div>
             </div>
 
-            {/* Previous tool chips (already done) */}
+            {/* Claude's response with tool summary */}
             <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
               <div
                 style={{
@@ -252,68 +302,62 @@ export const SnapShowcase: React.FC = () => {
 
               <div style={{ flex: 1 }}>
                 {/* Tool chips summary — all done */}
-                {["grep", "read", "edit"].map((tool) => (
-                  <div
-                    key={tool}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 8,
-                      background: palette.subtle,
-                      border: `1px solid ${palette.line}`,
-                      borderLeft: `3px solid ${palette.ok}`,
-                      padding: "6px 12px 6px 8px",
-                      borderRadius: 5,
-                      fontSize: 15,
-                      fontFamily: monoFont,
-                      marginBottom: 8,
-                      width: "fit-content",
-                    }}
-                  >
-                    <span style={{ color: palette.ok, fontWeight: 600 }}>{tool}</span>
-                    <span style={{ color: palette.ok, fontSize: 13 }}>✓</span>
-                  </div>
-                ))}
-
-                {/* Summary text */}
-                <div
-                  style={{
-                    opacity: summaryOpacity,
-                    marginTop: 8,
-                  }}
-                >
-                  {SUMMARY_LINES.map((line, i) => {
-                    const lineOpacity = interpolate(
-                      frame,
-                      [15 + i * 5, 25 + i * 5],
-                      [0, 1],
-                      { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-                    );
-                    const lineY = interpolate(
-                      frame,
-                      [15 + i * 5, 25 + i * 5],
-                      [10, 0],
-                      { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-                    );
-                    return (
-                      <div
-                        key={i}
-                        style={{
-                          fontSize: i === 0 ? 20 : 17,
-                          fontWeight: i === 0 ? 600 : 400,
-                          color: palette.ink,
-                          fontFamily: interFont,
-                          lineHeight: 1.6,
-                          opacity: lineOpacity,
-                          transform: `translateY(${lineY}px)`,
-                          paddingLeft: i > 0 ? 8 : 0,
-                        }}
-                      >
-                        {line}
-                      </div>
-                    );
-                  })}
+                <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+                  {["grep", "read", "edit"].map((tool) => (
+                    <div
+                      key={tool}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                        background: palette.subtle,
+                        border: `1px solid ${palette.line}`,
+                        borderLeft: `3px solid ${palette.ok}`,
+                        padding: "6px 12px 6px 8px",
+                        borderRadius: 5,
+                        fontSize: 15,
+                        fontFamily: monoFont,
+                      }}
+                    >
+                      <span style={{ color: palette.ok, fontWeight: 600 }}>{tool}</span>
+                      <span style={{ color: palette.ok, fontSize: 13 }}>✓</span>
+                    </div>
+                  ))}
                 </div>
+
+                {/* Summary text — with generous top breathing room */}
+                {SUMMARY_LINES.map((line, i) => {
+                  const lineOpacity = interpolate(
+                    frame,
+                    [10 + i * 6, 22 + i * 6],
+                    [0, 1],
+                    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+                  );
+                  const lineY = interpolate(
+                    frame,
+                    [10 + i * 6, 22 + i * 6],
+                    [12, 0],
+                    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
+                  );
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        fontSize: i === 0 ? 20 : 17,
+                        fontWeight: i === 0 ? 600 : 400,
+                        color: i === 0 ? palette.ink : palette.muted,
+                        fontFamily: interFont,
+                        lineHeight: 1.65,
+                        opacity: lineOpacity,
+                        transform: `translateY(${lineY}px)`,
+                        paddingLeft: i > 0 ? 10 : 0,
+                        marginBottom: i === 0 ? 8 : 0,
+                      }}
+                    >
+                      {line}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
