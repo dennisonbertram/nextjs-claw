@@ -2,6 +2,7 @@ import React from "react";
 import { Composition, Still } from "remotion";
 import { Demo } from "./Demo";
 import { Banner } from "./Banner";
+import { RealCapture } from "./RealCapture";
 
 // Total frames: 30+45+45+75+60+45 = 300 frames @ 30fps = 10s
 
@@ -12,6 +13,14 @@ export const RemotionRoot: React.FC = () => {
         id="Demo"
         component={Demo}
         durationInFrames={300}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="RealCapture"
+        component={RealCapture}
+        durationInFrames={345}
         fps={30}
         width={1920}
         height={1080}

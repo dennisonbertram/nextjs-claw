@@ -12,9 +12,10 @@
   "dependencies": {
     "@remotion/cli": "4.0.288",
     "@remotion/google-fonts": "4.0.288",
-    "remotion": "4.0.288",
+    "@remotion/transitions": "4.0.288",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "remotion": "4.0.288"
   },
   "devDependencies": {
     "@types/react": "19.1.4",
