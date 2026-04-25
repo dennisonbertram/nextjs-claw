@@ -79,6 +79,10 @@ function badRequest(message: string) {
 function parseSettings(raw: unknown): AgentSettings | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
   const obj = raw as Record<string, unknown>;
+  const provider =
+    obj.provider === 'zai' || obj.provider === 'deepseek' || obj.provider === 'custom'
+      ? obj.provider
+      : 'anthropic';
   const authMode = obj.authMode === 'api-key' ? 'api-key' : 'subscription';
   const model =
     obj.model === 'opus' || obj.model === 'sonnet' || obj.model === 'haiku'
@@ -89,9 +93,19 @@ function parseSettings(raw: unknown): AgentSettings | undefined {
     obj.effort === 'xhigh' || obj.effort === 'max'
       ? obj.effort
       : 'default';
-  const apiKey =
-    typeof obj.apiKey === 'string' && obj.apiKey.length > 0 ? obj.apiKey : undefined;
-  return { authMode, model, effort, apiKey };
+  const str = (k: string) =>
+    typeof obj[k] === 'string' && (obj[k] as string).length > 0
+      ? (obj[k] as string)
+      : undefined;
+  return {
+    provider,
+    authMode,
+    apiKey: str('apiKey'),
+    authToken: str('authToken'),
+    baseUrl: str('baseUrl'),
+    model,
+    effort,
+  };
 }
 
 function parseReferences(raw: unknown): ElementRef[] | undefined {

@@ -138,21 +138,36 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
     args.push('--effort', settings.effort);
   }
 
-  // Build subprocess env based on auth mode.
-  // - 'subscription' (default): strip ANTHROPIC_API_KEY so the CLI uses the keychain
-  //   OAuth token from `claude login`.
-  // - 'api-key': pass the key explicitly (from settings if provided, otherwise inherit
-  //   from the parent shell's env).
-  let subprocessEnv: NodeJS.ProcessEnv;
-  if (settings?.authMode === 'api-key') {
-    if (settings.apiKey && settings.apiKey.length > 0) {
-      subprocessEnv = { ...process.env, ANTHROPIC_API_KEY: settings.apiKey };
+  // Build subprocess env based on selected provider.
+  // - anthropic + subscription: strip ANTHROPIC_API_KEY → CLI uses keychain OAuth token
+  // - anthropic + api-key: pass key (from settings if provided, else inherit shell env)
+  // - zai / deepseek / custom: set ANTHROPIC_BASE_URL + ANTHROPIC_AUTH_TOKEN, blank
+  //   ANTHROPIC_API_KEY (per the Anthropic-compatible-endpoint convention)
+  const subprocessEnv: NodeJS.ProcessEnv = { ...process.env };
+  // Always clear these so previous-call state doesn't leak in
+  delete subprocessEnv.ANTHROPIC_BASE_URL;
+  delete subprocessEnv.ANTHROPIC_AUTH_TOKEN;
+
+  const provider = settings?.provider ?? 'anthropic';
+  if (provider === 'anthropic') {
+    if (settings?.authMode === 'api-key') {
+      if (settings.apiKey && settings.apiKey.length > 0) {
+        subprocessEnv.ANTHROPIC_API_KEY = settings.apiKey;
+      }
+      // else: leave shell env's ANTHROPIC_API_KEY in place (fall-through)
     } else {
-      subprocessEnv = process.env;
+      delete subprocessEnv.ANTHROPIC_API_KEY;
     }
   } else {
-    const { ANTHROPIC_API_KEY: _unused, ...rest } = process.env;
-    subprocessEnv = rest;
+    const baseUrl =
+      provider === 'zai'      ? 'https://api.z.ai/api/anthropic' :
+      provider === 'deepseek' ? 'https://api.deepseek.com/anthropic' :
+      settings?.baseUrl;
+    if (baseUrl) subprocessEnv.ANTHROPIC_BASE_URL = baseUrl;
+    if (settings?.authToken) subprocessEnv.ANTHROPIC_AUTH_TOKEN = settings.authToken;
+    // Per Anthropic-compatible-endpoint convention: blank the API key so the CLI
+    // doesn't try to negotiate with api.anthropic.com.
+    subprocessEnv.ANTHROPIC_API_KEY = '';
   }
   const proc = spawn('claude', args, {
     cwd: projectRoot,

@@ -1,18 +1,31 @@
 // Settings live in browser localStorage and ride along with each /api/agent call.
-// Server passes them to runAgent which adjusts subprocess env + CLI args.
+// Server passes them to runAgent which adjusts subprocess env vars based on provider.
 
+export type Provider = 'anthropic' | 'zai' | 'deepseek' | 'custom';
 export type AuthMode = 'subscription' | 'api-key';
 export type ModelChoice = 'default' | 'opus' | 'sonnet' | 'haiku';
 export type EffortChoice = 'default' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 export interface AgentSettings {
+  provider: Provider;
+
+  // Anthropic-only — ignored for other providers
   authMode: AuthMode;
-  apiKey?: string;        // only used when authMode === 'api-key'; falls through to env if blank
+  apiKey?: string;
+
+  // Used for zai / deepseek / custom: a single auth token (becomes ANTHROPIC_AUTH_TOKEN)
+  authToken?: string;
+
+  // Only used when provider === 'custom' — must be Anthropic-API-compatible
+  baseUrl?: string;
+
+  // Shared
   model: ModelChoice;
   effort: EffortChoice;
 }
 
 export const DEFAULT_SETTINGS: AgentSettings = {
+  provider: 'anthropic',
   authMode: 'subscription',
   model: 'default',
   effort: 'default',
@@ -27,8 +40,11 @@ export function loadSettings(): AgentSettings {
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw) as Partial<AgentSettings>;
     return {
+      provider: validProvider(parsed.provider),
       authMode: parsed.authMode === 'api-key' ? 'api-key' : 'subscription',
-      apiKey: typeof parsed.apiKey === 'string' ? parsed.apiKey : undefined,
+      apiKey: stringOrUndef(parsed.apiKey),
+      authToken: stringOrUndef(parsed.authToken),
+      baseUrl: stringOrUndef(parsed.baseUrl),
       model: validModel(parsed.model),
       effort: validEffort(parsed.effort),
     };
@@ -44,6 +60,9 @@ export function saveSettings(s: AgentSettings): void {
   } catch {}
 }
 
+function validProvider(v: unknown): Provider {
+  return v === 'zai' || v === 'deepseek' || v === 'custom' ? v : 'anthropic';
+}
 function validModel(v: unknown): ModelChoice {
   return v === 'opus' || v === 'sonnet' || v === 'haiku' ? v : 'default';
 }
@@ -52,7 +71,30 @@ function validEffort(v: unknown): EffortChoice {
     ? v
     : 'default';
 }
+function stringOrUndef(v: unknown): string | undefined {
+  return typeof v === 'string' && v.length > 0 ? v : undefined;
+}
+
+// Hardcoded base URLs for known providers. Updated April 2026.
+export const PROVIDER_BASE_URL: Record<Exclude<Provider, 'anthropic' | 'custom'>, string> = {
+  zai: 'https://api.z.ai/api/anthropic',
+  deepseek: 'https://api.deepseek.com/anthropic',
+};
+
+export const PROVIDER_LABEL: Record<Provider, string> = {
+  anthropic: 'Anthropic',
+  zai: 'Z.ai (GLM)',
+  deepseek: 'DeepSeek',
+  custom: 'Custom',
+};
 
 export function modelLabel(m: ModelChoice): string {
   return m === 'default' ? 'claude (default)' : m;
+}
+
+/** Resolved base URL for the provider (or undefined for native Anthropic). */
+export function resolvedBaseUrl(s: AgentSettings): string | undefined {
+  if (s.provider === 'anthropic') return undefined;
+  if (s.provider === 'custom') return s.baseUrl;
+  return PROVIDER_BASE_URL[s.provider];
 }

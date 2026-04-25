@@ -8,6 +8,8 @@ import {
   type AuthMode,
   type ModelChoice,
   type EffortChoice,
+  type Provider,
+  PROVIDER_BASE_URL,
 } from '@/lib/agent-settings';
 
 interface Props {
@@ -26,6 +28,7 @@ const PANEL_BG = '#fffdf6';
 export default function SettingsPanel({ onClose, onChange }: Props) {
   const [settings, setSettings] = useState<AgentSettings>(DEFAULT_SETTINGS);
   const [revealKey, setRevealKey] = useState(false);
+  const [revealToken, setRevealToken] = useState(false);
 
   useEffect(() => {
     setSettings(loadSettings());
@@ -58,64 +61,100 @@ export default function SettingsPanel({ onClose, onChange }: Props) {
         gap: 24,
       }}
     >
-      {/* Section: Authentication */}
-      <Section title="Authentication" subtitle="How does Claude run?">
+      {/* Section: Provider */}
+      <Section title="Provider" subtitle="Where do prompts go?">
         <SegRow
-          value={settings.authMode}
+          value={settings.provider}
           options={[
-            { value: 'subscription', label: 'Subscription', hint: 'Uses your `claude login` token' },
-            { value: 'api-key', label: 'API key', hint: 'Pay per request' },
+            { value: 'anthropic', label: 'Anthropic' },
+            { value: 'zai',       label: 'Z.ai' },
+            { value: 'deepseek',  label: 'DeepSeek' },
+            { value: 'custom',    label: 'Custom' },
           ]}
-          onChange={(v) => update('authMode', v as AuthMode)}
+          onChange={(v) => update('provider', v as Provider)}
         />
-        {settings.authMode === 'api-key' && (
-          <div style={{ marginTop: 12 }}>
-            <label style={labelStyle}>ANTHROPIC_API_KEY</label>
-            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-              <input
-                type={revealKey ? 'text' : 'password'}
+
+        {settings.provider === 'anthropic' && (
+          <div style={{ marginTop: 14 }}>
+            <SegRow
+              value={settings.authMode}
+              options={[
+                { value: 'subscription', label: 'Subscription' },
+                { value: 'api-key', label: 'API key' },
+              ]}
+              onChange={(v) => update('authMode', v as AuthMode)}
+            />
+            {settings.authMode === 'api-key' && (
+              <KeyInput
+                label="ANTHROPIC_API_KEY"
                 value={settings.apiKey ?? ''}
                 placeholder="sk-ant-... (or leave blank to use shell env)"
-                onChange={(e) => update('apiKey', e.target.value)}
-                style={{
-                  flex: 1,
-                  padding: '8px 10px',
-                  border: `1px solid ${LINE}`,
-                  borderRadius: 6,
-                  background: 'white',
-                  color: INK,
-                  fontSize: 12,
-                  fontFamily: 'var(--font-mono), JetBrains Mono, ui-monospace, monospace',
-                  outline: 'none',
-                }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = ACCENT)}
-                onBlur={(e) => (e.currentTarget.style.borderColor = LINE)}
+                reveal={revealKey}
+                onReveal={() => setRevealKey(v => !v)}
+                onChange={(v) => update('apiKey', v)}
               />
-              <button
-                onClick={() => setRevealKey(v => !v)}
-                title={revealKey ? 'Hide' : 'Show'}
-                style={miniBtnStyle}
-              >
-                {revealKey ? 'hide' : 'show'}
-              </button>
-            </div>
+            )}
             <p style={hintStyle}>
-              Stored only in this browser&apos;s localStorage. Never sent anywhere except your local{' '}
-              <code style={codeStyle}>claude</code> subprocess.
+              {settings.authMode === 'subscription'
+                ? <>Strips <code style={codeStyle}>ANTHROPIC_API_KEY</code> from the subprocess so the <code style={codeStyle}>claude</code> CLI uses your <code style={codeStyle}>claude login</code> keychain token.</>
+                : <>Stored in this browser&apos;s localStorage. Sent to your local <code style={codeStyle}>claude</code> subprocess only.</>
+              }
             </p>
           </div>
         )}
-        {settings.authMode === 'subscription' && (
-          <p style={hintStyle}>
-            <code style={codeStyle}>ANTHROPIC_API_KEY</code> is stripped from the subprocess so the{' '}
-            <code style={codeStyle}>claude</code> CLI uses your keychain OAuth token from{' '}
-            <code style={codeStyle}>claude login</code>.
-          </p>
+
+        {settings.provider === 'zai' && (
+          <ProviderEndpoint
+            preset={`Routes through ${PROVIDER_BASE_URL.zai} — Z.ai's Anthropic-compatible endpoint for GLM models. Use the same model dropdown below; Z.ai maps "opus" → glm-4.7, "sonnet" → glm-4.7, "haiku" → glm-4.5-air.`}
+            tokenLabel="Z.ai API key"
+            tokenValue={settings.authToken ?? ''}
+            tokenPlaceholder="zai-... (get one at z.ai)"
+            reveal={revealToken}
+            onReveal={() => setRevealToken(v => !v)}
+            onTokenChange={(v) => update('authToken', v)}
+          />
+        )}
+
+        {settings.provider === 'deepseek' && (
+          <ProviderEndpoint
+            preset={`Routes through ${PROVIDER_BASE_URL.deepseek} — DeepSeek's Anthropic-compatible endpoint. Set custom Anthropic→DeepSeek model mappings via shell env (ANTHROPIC_DEFAULT_OPUS_MODEL=deepseek-v4-pro, etc.). Some Anthropic-only fields are ignored on this endpoint.`}
+            tokenLabel="DeepSeek API key"
+            tokenValue={settings.authToken ?? ''}
+            tokenPlaceholder="sk-... (get one at platform.deepseek.com)"
+            reveal={revealToken}
+            onReveal={() => setRevealToken(v => !v)}
+            onTokenChange={(v) => update('authToken', v)}
+          />
+        )}
+
+        {settings.provider === 'custom' && (
+          <div style={{ marginTop: 14 }}>
+            <label style={labelStyle}>ANTHROPIC_BASE_URL</label>
+            <input
+              type="text"
+              value={settings.baseUrl ?? ''}
+              placeholder="https://your-proxy.example.com/anthropic"
+              onChange={(e) => update('baseUrl', e.target.value)}
+              style={inputStyle}
+            />
+            <KeyInput
+              label="ANTHROPIC_AUTH_TOKEN"
+              value={settings.authToken ?? ''}
+              placeholder="bearer token (optional)"
+              reveal={revealToken}
+              onReveal={() => setRevealToken(v => !v)}
+              onChange={(v) => update('authToken', v)}
+            />
+            <p style={hintStyle}>
+              Use any Anthropic-API-compatible endpoint — LiteLLM proxy, OpenRouter,
+              self-hosted gateway, etc.
+            </p>
+          </div>
         )}
       </Section>
 
       {/* Section: Model */}
-      <Section title="Model" subtitle="Which Claude does the editing?">
+      <Section title="Model" subtitle="Which model does the editing?">
         <SegRow
           value={settings.model}
           options={[
@@ -127,8 +166,9 @@ export default function SettingsPanel({ onClose, onChange }: Props) {
           onChange={(v) => update('model', v as ModelChoice)}
         />
         <p style={hintStyle}>
-          Default uses whatever <code style={codeStyle}>claude</code> picks (currently Opus).
-          Sonnet is faster and cheaper; Haiku is fastest but less capable on hard edits.
+          {settings.provider === 'anthropic'
+            ? 'Default = whatever claude picks (currently Opus). Sonnet is faster/cheaper.'
+            : 'Aliases are mapped by the upstream provider. If a tier doesn\'t resolve, switch to Default or override mapping via env.'}
         </p>
       </Section>
 
@@ -147,7 +187,7 @@ export default function SettingsPanel({ onClose, onChange }: Props) {
           onChange={(v) => update('effort', v as EffortChoice)}
         />
         <p style={hintStyle}>
-          Higher = more careful, slower, more expensive. Default is fine for everyday edits.
+          Higher = more careful, slower, more expensive. Some providers ignore this.
         </p>
       </Section>
 
@@ -215,11 +255,74 @@ function SegRow<T extends string>({
   );
 }
 
+function KeyInput({ label, value, placeholder, reveal, onReveal, onChange }: {
+  label: string;
+  value: string;
+  placeholder: string;
+  reveal: boolean;
+  onReveal: () => void;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div style={{ marginTop: 12 }}>
+      <label style={labelStyle}>{label}</label>
+      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+        <input
+          type={reveal ? 'text' : 'password'}
+          value={value}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          style={{ ...inputStyle, fontFamily: 'var(--font-mono), JetBrains Mono, ui-monospace, monospace' }}
+        />
+        <button onClick={onReveal} title={reveal ? 'Hide' : 'Show'} style={miniBtnStyle}>
+          {reveal ? 'hide' : 'show'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ProviderEndpoint({ preset, tokenLabel, tokenValue, tokenPlaceholder, reveal, onReveal, onTokenChange }: {
+  preset: string;
+  tokenLabel: string;
+  tokenValue: string;
+  tokenPlaceholder: string;
+  reveal: boolean;
+  onReveal: () => void;
+  onTokenChange: (v: string) => void;
+}) {
+  return (
+    <div style={{ marginTop: 14 }}>
+      <KeyInput
+        label={tokenLabel}
+        value={tokenValue}
+        placeholder={tokenPlaceholder}
+        reveal={reveal}
+        onReveal={onReveal}
+        onChange={onTokenChange}
+      />
+      <p style={hintStyle}>{preset}</p>
+    </div>
+  );
+}
+
 const labelStyle: React.CSSProperties = {
   fontSize: 11,
   fontFamily: 'var(--font-mono), JetBrains Mono, ui-monospace, monospace',
   color: MUTED,
   letterSpacing: 0.4,
+};
+
+const inputStyle: React.CSSProperties = {
+  flex: 1,
+  width: '100%',
+  padding: '8px 10px',
+  border: `1px solid ${LINE}`,
+  borderRadius: 6,
+  background: 'white',
+  color: INK,
+  fontSize: 12,
+  outline: 'none',
 };
 
 const hintStyle: React.CSSProperties = {
