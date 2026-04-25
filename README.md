@@ -4,6 +4,9 @@
 
 [![npm version](https://img.shields.io/npm/v/nextjs-claw)](https://www.npmjs.com/package/nextjs-claw)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
+
+> **Free and open source** under the [MIT License](./LICENSE). Fork it, modify it, ship it. No telemetry, no phone-home, no SaaS lock-in. Runs locally on your laptop using your Claude subscription (or your own API key, or DeepSeek, or Z.ai, or any Anthropic-API-compatible endpoint — see [Settings](#provider-options)).
 
 A Next.js starter that builds itself. Chat with Claude inside the running app, and it edits its own source code and hot-reloads in real time.
 
@@ -112,6 +115,25 @@ npx nextjs-claw .             # scaffold into current directory (must be empty)
 npx nextjs-claw               # defaults to ./my-infinite-app
 ```
 
+## Provider options
+
+Open the chat panel's gear icon to switch which Claude-compatible model handles your prompts:
+
+| Provider | What it routes to | What you need |
+|----------|------------------|---------------|
+| **Anthropic** (default) | api.anthropic.com via your `claude login` keychain (subscription) or `ANTHROPIC_API_KEY` (api-key mode) | A Claude subscription or an Anthropic API key |
+| **Z.ai** | `https://api.z.ai/api/anthropic` (GLM-4.7 / glm-4.5-air) | A Z.ai API key from [z.ai](https://z.ai) |
+| **DeepSeek** | `https://api.deepseek.com/anthropic` | A DeepSeek API key from [platform.deepseek.com](https://platform.deepseek.com) |
+| **Custom** | Any Anthropic-API-compatible endpoint | A base URL — works with [LiteLLM](https://docs.litellm.ai/), [OpenRouter](https://openrouter.ai/), self-hosted gateways, etc. |
+
+Settings persist in your browser's `localStorage`. Tokens are sent only to your local dev server's `claude` subprocess — never to anywhere else.
+
+## Contributing
+
+Fork it, branch it, send a PR. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the layout and conventions, [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) for community norms, and [SECURITY.md](./SECURITY.md) for vuln reporting.
+
+Issues, ideas, and PRs all welcome on [GitHub](https://github.com/dennisonbertram/nextjs-claw). Release history in [CHANGELOG.md](./CHANGELOG.md).
+
 ## License
 
-MIT
+[MIT](./LICENSE) — © 2026 Dennison Bertram
