@@ -1,6 +1,6 @@
 {
   "name": "nextjs-claw",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A Next.js starter that builds itself — chat with Claude inside the app to edit its own source and watch it hot-reload.",
   "bin": {
     "nextjs-claw": "bin/create.js"
