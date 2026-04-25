@@ -2,13 +2,14 @@ import { NextRequest } from 'next/server';
 import { runAgent } from '@/lib/agent-engine';
 import type { AgentEvent } from '@/lib/agent-events';
 import type { ElementRef } from '@/lib/react-source';
+import type { AgentSettings } from '@/lib/agent-settings';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // seconds; fine for local dev, ignored there
 
 export async function POST(req: NextRequest) {
-  let body: { prompt?: unknown; sessionId?: unknown; references?: unknown };
+  let body: { prompt?: unknown; sessionId?: unknown; references?: unknown; settings?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -20,6 +21,7 @@ export async function POST(req: NextRequest) {
 
   const sessionId = typeof body.sessionId === 'string' ? body.sessionId : undefined;
   const references = parseReferences(body.references);
+  const settings = parseSettings(body.settings);
   const projectRoot = process.cwd();
 
   const finalPrompt = buildPromptWithReferences(prompt, references);
@@ -39,6 +41,7 @@ export async function POST(req: NextRequest) {
           projectRoot,
           sessionId,
           signal: req.signal,
+          settings,
         })) {
           enqueue(event);
         }
@@ -71,6 +74,24 @@ function badRequest(message: string) {
     status: 400,
     headers: { 'Content-Type': 'application/json' },
   });
+}
+
+function parseSettings(raw: unknown): AgentSettings | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const obj = raw as Record<string, unknown>;
+  const authMode = obj.authMode === 'api-key' ? 'api-key' : 'subscription';
+  const model =
+    obj.model === 'opus' || obj.model === 'sonnet' || obj.model === 'haiku'
+      ? obj.model
+      : 'default';
+  const effort =
+    obj.effort === 'low' || obj.effort === 'medium' || obj.effort === 'high' ||
+    obj.effort === 'xhigh' || obj.effort === 'max'
+      ? obj.effort
+      : 'default';
+  const apiKey =
+    typeof obj.apiKey === 'string' && obj.apiKey.length > 0 ? obj.apiKey : undefined;
+  return { authMode, model, effort, apiKey };
 }
 
 function parseReferences(raw: unknown): ElementRef[] | undefined {

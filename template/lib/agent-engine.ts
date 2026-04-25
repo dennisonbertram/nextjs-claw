@@ -1,12 +1,14 @@
 import { spawn } from 'node:child_process';
 import type { AgentEvent, ToolName } from './agent-events';
 import { summarizeToolInput } from './agent-events';
+import type { AgentSettings } from './agent-settings';
 
 export interface RunAgentOptions {
   prompt: string;
   projectRoot: string;
   sessionId?: string;      // if set, resume existing claude session
   signal?: AbortSignal;    // client disconnect → kill subprocess
+  settings?: AgentSettings;
 }
 
 const SYSTEM_PROMPT = `You are an AI coding assistant embedded inside a running Next.js 16 app that a
@@ -118,7 +120,7 @@ Rules when executing a recipe:
    to drop into app/preview/page.tsx.`;
 
 export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEvent, void, void> {
-  const { prompt, projectRoot, sessionId, signal } = opts;
+  const { prompt, projectRoot, sessionId, signal, settings } = opts;
 
   const args = [
     '-p', prompt,
@@ -129,10 +131,29 @@ export async function* runAgent(opts: RunAgentOptions): AsyncGenerator<AgentEven
     '--append-system-prompt', SYSTEM_PROMPT,
   ];
   if (sessionId) args.push('--resume', sessionId);
+  if (settings?.model && settings.model !== 'default') {
+    args.push('--model', settings.model);
+  }
+  if (settings?.effort && settings.effort !== 'default') {
+    args.push('--effort', settings.effort);
+  }
 
-  // Strip ANTHROPIC_API_KEY so the subprocess uses the OAuth keychain token
-  // from `claude login` instead of a potentially stale env-var key.
-  const { ANTHROPIC_API_KEY: _unused, ...subprocessEnv } = process.env;
+  // Build subprocess env based on auth mode.
+  // - 'subscription' (default): strip ANTHROPIC_API_KEY so the CLI uses the keychain
+  //   OAuth token from `claude login`.
+  // - 'api-key': pass the key explicitly (from settings if provided, otherwise inherit
+  //   from the parent shell's env).
+  let subprocessEnv: NodeJS.ProcessEnv;
+  if (settings?.authMode === 'api-key') {
+    if (settings.apiKey && settings.apiKey.length > 0) {
+      subprocessEnv = { ...process.env, ANTHROPIC_API_KEY: settings.apiKey };
+    } else {
+      subprocessEnv = process.env;
+    }
+  } else {
+    const { ANTHROPIC_API_KEY: _unused, ...rest } = process.env;
+    subprocessEnv = rest;
+  }
   const proc = spawn('claude', args, {
     cwd: projectRoot,
     stdio: ['ignore', 'pipe', 'pipe'],

@@ -2,6 +2,7 @@
 import { useCallback, useRef, useState } from 'react';
 import type { AgentEvent } from './agent-events';
 import type { ElementRef } from './react-source';
+import { loadSettings } from './agent-settings';
 
 export type ToolState = 'running' | 'ok' | 'err';
 
@@ -144,10 +145,11 @@ export function useAgentStream(): UseAgentStream {
     abortRef.current = ctrl;
 
     try {
+      const settings = loadSettings();
       const res = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, sessionId, references }),
+        body: JSON.stringify({ prompt, sessionId, references, settings }),
         signal: ctrl.signal,
       });
       if (!res.body) throw new Error('No response body');
